@@ -230,16 +230,25 @@ describe('modules/versioning/docker/index', () => {
   );
 
   it.each`
-    value               | expected
-    ${'3.7.0'}          | ${'3.7.0'}
-    ${'3.7.0b1'}        | ${'3.7.0b1'}
-    ${'3.7-alpine'}     | ${'3.7'}
-    ${'3.8.0-alpine'}   | ${'3.8.0'}
-    ${'3.8.0b1-alpine'} | ${'3.8.0b1'}
-    ${'3.8.2'}          | ${'3.8.2'}
-    ${'1.2.3-4'}        | ${'1.2.3-4'}
-    ${'1.2.3-beta.1'}   | ${'1.2.3-beta.1'}
-    ${undefined}        | ${undefined}
+    value                     | expected
+    ${'3.7.0'}                | ${'3.7.0'}
+    ${'3.7.0b1'}              | ${'3.7.0b1'}
+    ${'3.7-alpine'}           | ${'3.7'}
+    ${'3.8.0-alpine'}         | ${'3.8.0'}
+    ${'3.8.0b1-alpine'}       | ${'3.8.0b1'}
+    ${'3.8.2'}                | ${'3.8.2'}
+    ${'1.2.3-4'}              | ${'1.2.3-4'}
+    ${'1.2.3-beta.1'}         | ${'1.2.3-beta.1'}
+    ${'1.2.3-alpha.beta.1'}   | ${'1.2.3-alpha.beta.1'}
+    ${'1.2.3-3.1'}            | ${'1.2.3-3.1'}
+    ${'1.2.3-alpha.3.1'}      | ${'1.2.3-alpha.3.1'}
+    ${'11.0.0-alpine-3'}      | ${'11.0.0'}
+    ${'11.0.0-alpine-3.12'}   | ${'11.0.0'}
+    ${'11.0.0-alpine-3.12.0'} | ${'11.0.0'}
+    ${'23.0.0-alpine3'}       | ${'23.0.0'}
+    ${'23.0.0-alpine3.20'}    | ${'23.0.0'}
+    ${'23.0.0-alpine3.20.0'}  | ${'23.0.0'}
+    ${undefined}              | ${undefined}
   `('valueToVersion("$value") === $expected', ({ value, expected }) => {
     const res = docker.valueToVersion?.(value);
     expect(res).toBe(expected);

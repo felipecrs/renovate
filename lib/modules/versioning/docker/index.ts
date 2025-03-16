@@ -1,6 +1,3 @@
-import type { SemVer } from 'semver';
-import { parse as parseSemver } from 'semver';
-
 import { regEx } from '../../../util/regex';
 import { coerceString } from '../../../util/string';
 import type { GenericVersion } from '../generic';
@@ -15,6 +12,9 @@ export const urls = [
 export const supportsRanges = false;
 
 const versionPattern = regEx(/^(?<version>\d+(?:\.\d+)*)(?<prerelease>\w*)$/);
+const semverPrereleasePattern = regEx(
+  /^(?<version>\d+\.\d+\.\d)-(?<prerelease>((\d+|[A-Za-z0-9-]+[A-Za-z-])\.)*\d+)$/,
+);
 const commitHashPattern = regEx(/^[a-f0-9]{7,40}$/);
 const numericPattern = regEx(/^[0-9]+$/);
 
@@ -25,11 +25,11 @@ class DockerVersioningApi extends GenericVersioningApi {
     }
 
     // Try to identify a pure semver prerelease first
-    const semver = parseSemverPrerelease(version);
-    if (semver) {
+    const semverPrerelease = version.match(semverPrereleasePattern)?.groups;
+    if (semverPrerelease) {
       return {
-        release: [semver.major, semver.minor, semver.patch],
-        prerelease: semver.prerelease.join('.'),
+        release: semverPrerelease.version.split('.').map(Number),
+        prerelease: semverPrerelease.prerelease,
       };
     }
 
@@ -107,7 +107,7 @@ class DockerVersioningApi extends GenericVersioningApi {
     }
 
     // Try to identify a pure semver prerelease first
-    if (parseSemverPrerelease(value)) {
+    if (value.match(semverPrereleasePattern)) {
       return value;
     }
 
@@ -117,22 +117,6 @@ class DockerVersioningApi extends GenericVersioningApi {
 
   // Allow upgrading from 1.2.3-4 to 1.2.4-5
   allowUnstableMajorUpgrades = true;
-}
-
-function parseSemverPrerelease(version: string): SemVer | null {
-  const semver = parseSemver(version);
-  if (!semver) {
-    return null;
-  }
-  if (semver.prerelease.length === 0) {
-    return null;
-  }
-  // Only consider the likes of 1.2.3-4 and 1.2.3-beta.0 to avoid catching 1.2.3-alpine as prerelease
-  const last = semver.prerelease[semver.prerelease.length - 1];
-  if (typeof last === 'number') {
-    return semver;
-  }
-  return null;
 }
 
 export const api: VersioningApi = new DockerVersioningApi();
