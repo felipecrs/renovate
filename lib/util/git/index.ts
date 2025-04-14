@@ -415,12 +415,21 @@ export async function syncGit(): Promise<void> {
         await resetToBranch(config.currentBranch);
 
         if (process.env.RENOVATE_X_FETCH_EXPECTED_COMMIT) {
+          logger.debug(
+            `Checking if commit '${process.env.RENOVATE_X_FETCH_EXPECTED_COMMIT}' is present on git fetch after automerge`,
+          );
           const present = await isCommitPresent(
             process.env.RENOVATE_X_FETCH_EXPECTED_COMMIT,
           );
           if (present) {
+            logger.debug(
+              `Commit '${process.env.RENOVATE_X_FETCH_EXPECTED_COMMIT}' is present on git fetch after automerge`,
+            );
             delete process.env.RENOVATE_X_FETCH_EXPECTED_COMMIT;
           } else {
+            logger.debug(
+              `Commit '${process.env.RENOVATE_X_FETCH_EXPECTED_COMMIT}' is not present on git fetch after automerge`,
+            );
             throw new Error(
               `${REPOSITORY_GIT_FETCH_AFTER_AUTOMERGE_IS_MISSING_COMMIT} '${process.env.RENOVATE_X_FETCH_EXPECTED_COMMIT}'`,
             );
@@ -1424,12 +1433,21 @@ export async function listCommitTree(
 }
 
 async function isCommitPresent(commit: string): Promise<boolean> {
+  // Attempt to cherry-pick the commit without creating a commit
   try {
-    await git.raw(['cherry-pick', '-n', commit]);
+    await git.raw(['cherry-pick', '--no-commit', commit]);
   } catch {
+    // Probably a merge conflict which means the commit is not present
+    await git.raw(['reset', '--hard', 'HEAD']);
     return false;
   }
-  const diff = await git.diff(['--staged']);
-  await git.raw(['reset', '--hard', 'HEAD']);
-  return diff.trim().length === 0;
+  // If we reach here, the cherry-pick either applied cleanly or there was nothing to apply
+  const diff = await git.diff();
+  if (diff) {
+    // Diff after cherry-pick means the commit was not present
+    await git.raw(['reset', '--hard', 'HEAD']);
+    return false;
+  }
+  // No diff after cherry-pick means the commit was present already
+  return true;
 }
