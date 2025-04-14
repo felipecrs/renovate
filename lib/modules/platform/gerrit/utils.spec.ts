@@ -126,6 +126,7 @@ describe('modules/platform/gerrit/utils', () => {
         bodyStruct: {
           hash: hashBody('Last PR-Body'),
         },
+        sha: 'abc',
       });
     });
 
