@@ -40,7 +40,7 @@ export function serializeJSON(
   const existingProps = new Map(
     rootObj
       .properties()
-      .map((prop: any) => [prop.name()?.decodedValue() ?? '', prop]),
+      .map((prop: any) => [prop.name()?.decodedValue(), prop]),
   );
 
   // Track which properties we've processed
