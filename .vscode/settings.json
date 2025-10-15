@@ -13,7 +13,8 @@
   },
   "files.associations": {
     "Dockerfile.*": "dockerfile",
-    ".releaserc": "json"
+    ".releaserc": "json",
+    "**/lib/workers/repository/config-migration/branch/__fixtures__/serialize-json/**/*.json": "jsonc"
   },
   "omnisharp.autoStart": false,
   "vitest.nodeEnv": {

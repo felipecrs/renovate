@@ -1,0 +1,11 @@
+{
+  // Comment at start
+  "enabled": true,
+  "extends": ["config:recommended"],
+  /* Multi-line
+     comment */
+  "timezone": "America/New_York",
+  "oldProperty": "will be removed", // inline comment
+  // Comment before last property
+  "schedule": ["after 10pm"]
+}

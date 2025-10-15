@@ -1,0 +1,11 @@
+{
+  // Comment at start
+  "enabled": false,
+  "extends": ["config:base"],
+  /* Multi-line
+     comment */
+  "timezone": "America/Los_Angeles",
+  // Comment before last property
+  "schedule": ["after 11pm"],
+  "newProperty": "added"
+}

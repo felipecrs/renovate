@@ -1,0 +1,7 @@
+{
+  // This is a comment about enabled
+  "enabled": true,
+  // This is a comment about extends
+  "extends": ["config:old"],
+  "timezone": "America/New_York"
+}
