@@ -1,92 +1,151 @@
+import { codeBlock } from 'common-tags';
 import { logger } from '../../../../logger';
 import { serializeJSON } from './serialize-json';
-import { Fixtures } from '~test/fixtures';
 
 vi.mock('../../../../logger');
 
 describe('workers/repository/config-migration/branch/serialize-json', () => {
   describe('serializeJSON', () => {
     it('updates property values in basic JSON', () => {
-      const obj = Fixtures.getJson('./serialize-json/1-basic-update/obj.json');
-      const original = Fixtures.get(
-        './serialize-json/1-basic-update/original.json',
-      );
-      const expected = Fixtures.get(
-        './serialize-json/1-basic-update/expected.json',
-      );
+      const obj = {
+        enabled: true,
+        extends: ['config:base'],
+        timezone: 'America/New_York',
+      };
+      const original = codeBlock`
+        {
+          "enabled": true,
+          "extends": ["config:recommended"],
+          "timezone": "America/New_York"
+        }
+      `;
+      const expected = codeBlock`
+        {
+          "enabled": true,
+          "extends": ["config:base"],
+          "timezone": "America/New_York"
+        }
+      `;
 
       const result = serializeJSON(obj, original);
       expect(result).toBe(expected);
     });
 
     it('preserves comments when updating properties', () => {
-      const obj = Fixtures.getJson(
-        './serialize-json/2-preserve-comments/obj.json',
-      );
-      const original = Fixtures.get(
-        './serialize-json/2-preserve-comments/original.json',
-      );
-      const expected = Fixtures.get(
-        './serialize-json/2-preserve-comments/expected.json',
-      );
+      const obj = {
+        enabled: true,
+        extends: ['config:base'],
+        timezone: 'America/New_York',
+      };
+      const original = codeBlock`
+        {
+          // This is a comment about enabled
+          "enabled": true,
+          // This is a comment about extends
+          "extends": ["config:recommended"],
+          "timezone": "America/New_York"
+        }
+      `;
+      const expected = codeBlock`
+        {
+          // This is a comment about enabled
+          "enabled": true,
+          // This is a comment about extends
+          "extends": ["config:base"],
+          "timezone": "America/New_York"
+        }
+      `;
 
       const result = serializeJSON(obj, original);
       expect(result).toBe(expected);
     });
 
     it('adds new properties to the end', () => {
-      const obj = Fixtures.getJson(
-        './serialize-json/3-add-new-property/obj.json',
-      );
-      const original = Fixtures.get(
-        './serialize-json/3-add-new-property/original.json',
-      );
-      const expected = Fixtures.get(
-        './serialize-json/3-add-new-property/expected.json',
-      );
+      const obj = {
+        enabled: true,
+        extends: ['config:recommended'],
+        timezone: 'America/New_York',
+        prHourlyLimit: 2,
+      };
+      const original = codeBlock`
+        {
+          "enabled": true,
+          "extends": ["config:recommended"],
+          "timezone": "America/New_York"
+        }
+      `;
+      const expected = codeBlock`
+        {
+          "enabled": true,
+          "extends": ["config:recommended"],
+          "timezone": "America/New_York",
+          "prHourlyLimit": 2
+        }
+      `;
 
       const result = serializeJSON(obj, original);
       expect(result).toBe(expected);
     });
 
     it('removes properties not in migrated config', () => {
-      const obj = Fixtures.getJson(
-        './serialize-json/4-remove-property/obj.json',
-      );
-      const original = Fixtures.get(
-        './serialize-json/4-remove-property/original.json',
-      );
-      const expected = Fixtures.get(
-        './serialize-json/4-remove-property/expected.json',
-      );
+      const obj = {
+        enabled: true,
+        extends: ['config:recommended'],
+        timezone: 'America/New_York',
+      };
+      const original = codeBlock`
+        {
+          "enabled": true,
+          "extends": ["config:recommended"],
+          "timezone": "America/New_York",
+          "oldProperty": "will be removed"
+        }
+      `;
+      const expected = codeBlock`
+        {
+          "enabled": true,
+          "extends": ["config:recommended"],
+          "timezone": "America/New_York"
+        }
+      `;
 
       const result = serializeJSON(obj, original);
       expect(result).toBe(expected);
     });
 
     it('falls back to JSON.stringify when original content is null', () => {
-      const obj = Fixtures.getJson(
-        './serialize-json/5-null-original-content/obj.json',
-      );
+      const obj = {
+        enabled: true,
+        extends: ['config:recommended'],
+      };
       const original = null;
-      const expected = Fixtures.get(
-        './serialize-json/5-null-original-content/expected.json',
-      );
+      const expected = codeBlock`
+        {
+          "enabled": true,
+          "extends": [
+            "config:recommended"
+          ]
+        }
+      `;
 
       const result = serializeJSON(obj, original);
       expect(result).toBe(expected);
     });
 
     it('falls back to JSON.stringify when JSON is invalid', () => {
-      const obj = Fixtures.getJson(
-        './serialize-json/6-invalid-json-fallback/obj.json',
-      );
-      const original = Fixtures.get(
-        './serialize-json/6-invalid-json-fallback/original.json',
-      );
-      const expected = Fixtures.get(
-        './serialize-json/6-invalid-json-fallback/expected.json',
-      );
+      const obj = {
+        enabled: true,
+        extends: ['config:recommended'],
+      };
+      const original = 'invalid json{';
+      const expected = codeBlock`
+        {
+          "enabled": true,
+          "extends": [
+            "config:recommended"
+          ]
+        }
+      `;
 
       const result = serializeJSON(obj, original);
       expect(result).toBe(expected);
@@ -97,30 +156,79 @@ describe('workers/repository/config-migration/branch/serialize-json', () => {
     });
 
     it('handles complex operations with multiple comments', () => {
-      const original = Fixtures.get(
-        './serialize-json/7-complex-comments/original.json',
-      );
-      const obj = Fixtures.getJson(
-        './serialize-json/7-complex-comments/obj.json',
-      );
-      const expected = Fixtures.get(
-        './serialize-json/7-complex-comments/expected.json',
-      );
+      const obj = {
+        enabled: false,
+        extends: ['config:base'],
+        timezone: 'America/Los_Angeles',
+        schedule: ['after 11pm'],
+        newProperty: 'added',
+      };
+      const original = codeBlock`
+        {
+          // Comment at start
+          "enabled": true,
+          "extends": ["config:recommended"],
+          /* Multi-line
+             comment */
+          "timezone": "America/New_York",
+          "oldProperty": "will be removed", // inline comment
+          // Comment before last property
+          "schedule": ["after 10pm"]
+        }
+      `;
+      const expected = codeBlock`
+        {
+          // Comment at start
+          "enabled": false,
+          "extends": ["config:base"],
+          /* Multi-line
+             comment */
+          "timezone": "America/Los_Angeles",
+          // Comment before last property
+          "schedule": ["after 11pm"],
+          "newProperty": "added"
+        }
+      `;
 
       const result = serializeJSON(obj, original);
       expect(result).toBe(expected);
     });
 
     it('respects custom indentation fallback', () => {
-      const obj = Fixtures.getJson(
-        './serialize-json/1-basic-update/original.json',
-      );
+      const obj = {
+        enabled: true,
+        extends: ['config:recommended'],
+        timezone: 'America/New_York',
+      };
       const original = null;
 
       const result = serializeJSON(obj, original, '    ');
       // Should use 4-space indentation
       expect(result).toContain('    "enabled"');
       expect(result).toContain('    "extends"');
+    });
+
+    it('handles empty property names correctly', () => {
+      const obj = {
+        enabled: true,
+        extends: ['config:base'],
+      };
+      const original = codeBlock`
+        {
+          "": "empty key value",
+          "enabled": true,
+          "extends": ["config:recommended"]
+        }
+      `;
+      const expected = codeBlock`
+        {
+          "enabled": true,
+          "extends": ["config:base"]
+        }
+      `;
+
+      const result = serializeJSON(obj, original);
+      expect(result).toBe(expected);
     });
   });
 });

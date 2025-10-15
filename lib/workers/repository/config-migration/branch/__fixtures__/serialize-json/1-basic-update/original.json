@@ -1,5 +1,0 @@
-{
-  "enabled": true,
-  "extends": ["config:old"],
-  "timezone": "America/New_York"
-}
