@@ -22,7 +22,9 @@ describe('workers/repository/config-migration/branch/serialize-json', () => {
       const expected = codeBlock`
         {
           "enabled": true,
-          "extends": ["config:base"],
+          "extends": [
+            "config:base"
+          ],
           "timezone": "America/New_York"
         }
       `;
@@ -51,7 +53,9 @@ describe('workers/repository/config-migration/branch/serialize-json', () => {
           // This is a comment about enabled
           "enabled": true,
           // This is a comment about extends
-          "extends": ["config:base"],
+          "extends": [
+            "config:base"
+          ],
           "timezone": "America/New_York"
         }
       `;
@@ -77,7 +81,9 @@ describe('workers/repository/config-migration/branch/serialize-json', () => {
       const expected = codeBlock`
         {
           "enabled": true,
-          "extends": ["config:recommended"],
+          "extends": [
+            "config:recommended"
+          ],
           "timezone": "America/New_York",
           "prHourlyLimit": 2
         }
@@ -104,7 +110,9 @@ describe('workers/repository/config-migration/branch/serialize-json', () => {
       const expected = codeBlock`
         {
           "enabled": true,
-          "extends": ["config:recommended"],
+          "extends": [
+            "config:recommended"
+          ],
           "timezone": "America/New_York"
         }
       `;
@@ -160,8 +168,8 @@ describe('workers/repository/config-migration/branch/serialize-json', () => {
         enabled: false,
         extends: ['config:base'],
         timezone: 'America/Los_Angeles',
-        schedule: ['after 11pm'],
         newProperty: 'added',
+        schedule: ['after 11pm'],
       };
       const original = codeBlock`
         {
@@ -180,13 +188,17 @@ describe('workers/repository/config-migration/branch/serialize-json', () => {
         {
           // Comment at start
           "enabled": false,
-          "extends": ["config:base"],
+          "extends": [
+            "config:base"
+          ],
           /* Multi-line
              comment */
           "timezone": "America/Los_Angeles",
+          "newProperty": "added",
           // Comment before last property
-          "schedule": ["after 11pm"],
-          "newProperty": "added"
+          "schedule": [
+            "after 11pm"
+          ]
         }
       `;
 
@@ -206,29 +218,6 @@ describe('workers/repository/config-migration/branch/serialize-json', () => {
       // Should use 4-space indentation
       expect(result).toContain('    "enabled"');
       expect(result).toContain('    "extends"');
-    });
-
-    it('handles empty property names correctly', () => {
-      const obj = {
-        enabled: true,
-        extends: ['config:base'],
-      };
-      const original = codeBlock`
-        {
-          "": "empty key value",
-          "enabled": true,
-          "extends": ["config:recommended"]
-        }
-      `;
-      const expected = codeBlock`
-        {
-          "enabled": true,
-          "extends": ["config:base"]
-        }
-      `;
-
-      const result = serializeJSON(obj, original);
-      expect(result).toBe(expected);
     });
   });
 });

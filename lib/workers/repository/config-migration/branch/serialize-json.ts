@@ -46,17 +46,39 @@ export function serializeJSON(
   // Track which properties we've processed
   const processedKeys = new Set<string>();
 
-  // Update existing properties and track them
-  for (const [key, value] of Object.entries(obj)) {
+  // Build list of keys in the order they appear in obj
+  const objRecord = obj as Record<string, unknown>;
+  let insertIndex = 0;
+
+  // Update existing properties and insert new ones in the correct position
+  for (const [key, value] of Object.entries(objRecord)) {
     processedKeys.add(key);
-    const existingProp = existingProps.get(key);
+    const existingProp = existingProps.get(key) as any;
 
     if (existingProp) {
       // Update existing property value (preserves comments)
-      (existingProp as any).setValue(value);
+      existingProp.setValue(value);
+      insertIndex = existingProp.propertyIndex() + 1;
+
+      // Format arrays as multiline
+      if (Array.isArray(value) && value.length > 0) {
+        const arrayValue = existingProp.valueIfArray();
+        if (arrayValue) {
+          arrayValue.ensureMultiline();
+        }
+      }
     } else {
-      // Add new property at the end
-      rootObj.append(key, value);
+      // Insert new property at the current position
+      const newProp = rootObj.insert(insertIndex, key, value);
+      insertIndex++;
+
+      // Format arrays as multiline
+      if (Array.isArray(value) && value.length > 0) {
+        const arrayValue = newProp.valueIfArray();
+        if (arrayValue) {
+          arrayValue.ensureMultiline();
+        }
+      }
     }
   }
 
