@@ -1,12 +1,12 @@
 import { codeBlock } from 'common-tags';
 import { logger } from '../../../../logger';
-import { serializeJSON } from './serialize-json';
+import { stringifyJsonPreservingComments } from './stringify-json-preserving-comments';
 import { Fixtures } from '~test/fixtures';
 
 vi.mock('../../../../logger');
 
-describe('workers/repository/config-migration/branch/serialize-json', () => {
-  describe('serializeJSON', () => {
+describe('workers/repository/config-migration/branch/stringify-json-preserving-comments', () => {
+  describe('stringifyJsonPreservingComments', () => {
     it('updates property values in basic JSON', () => {
       const obj = {
         enabled: true,
@@ -28,7 +28,7 @@ describe('workers/repository/config-migration/branch/serialize-json', () => {
         }
       `;
 
-      const result = serializeJSON(obj, original);
+      const result = stringifyJsonPreservingComments(obj, original);
       expect(result).toBe(expected);
     });
 
@@ -57,7 +57,7 @@ describe('workers/repository/config-migration/branch/serialize-json', () => {
         }
       `;
 
-      const result = serializeJSON(obj, original);
+      const result = stringifyJsonPreservingComments(obj, original);
       expect(result).toBe(expected);
     });
 
@@ -84,7 +84,7 @@ describe('workers/repository/config-migration/branch/serialize-json', () => {
         }
       `;
 
-      const result = serializeJSON(obj, original);
+      const result = stringifyJsonPreservingComments(obj, original);
       expect(result).toBe(expected);
     });
 
@@ -110,7 +110,7 @@ describe('workers/repository/config-migration/branch/serialize-json', () => {
         }
       `;
 
-      const result = serializeJSON(obj, original);
+      const result = stringifyJsonPreservingComments(obj, original);
       expect(result).toBe(expected);
     });
 
@@ -129,7 +129,7 @@ describe('workers/repository/config-migration/branch/serialize-json', () => {
         }
       `;
 
-      const result = serializeJSON(obj, original);
+      const result = stringifyJsonPreservingComments(obj, original);
       expect(result).toBe(expected);
     });
 
@@ -148,7 +148,7 @@ describe('workers/repository/config-migration/branch/serialize-json', () => {
         }
       `;
 
-      const result = serializeJSON(obj, original);
+      const result = stringifyJsonPreservingComments(obj, original);
       expect(result).toBe(expected);
       expect(logger.warn).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({ error: expect.any(Error) }),
@@ -232,7 +232,7 @@ describe('workers/repository/config-migration/branch/serialize-json', () => {
         }
       `;
 
-      const result = serializeJSON(obj, original);
+      const result = stringifyJsonPreservingComments(obj, original);
       expect(result).toBe(expected);
     });
 
@@ -244,7 +244,7 @@ describe('workers/repository/config-migration/branch/serialize-json', () => {
       };
       const original = null;
 
-      const result = serializeJSON(obj, original, '    ');
+      const result = stringifyJsonPreservingComments(obj, original, '    ');
       // Should use 4-space indentation
       expect(result).toContain('    "enabled"');
       expect(result).toContain('    "extends"');
@@ -255,7 +255,10 @@ describe('workers/repository/config-migration/branch/serialize-json', () => {
       const migratedConfigObj = Fixtures.getJsonc('./migrated.json');
       const migratedDataJson = Fixtures.getJson('./migrated-data.json');
 
-      const result = serializeJSON(migratedConfigObj, renovateJson);
+      const result = stringifyJsonPreservingComments(
+        migratedConfigObj,
+        renovateJson,
+      );
       expect(result).toBe(migratedDataJson.content);
     });
   });

@@ -11,7 +11,7 @@ import { scm } from '../../../../modules/platform/scm';
 import { readLocalFile } from '../../../../util/fs';
 import { EditorConfig } from '../../../../util/json-writer';
 import { detectRepoFileConfig } from '../../init/merge';
-import { serializeJSON } from './serialize-json';
+import { stringifyJsonPreservingComments } from './stringify-json-preserving-comments';
 
 export interface MigratedData {
   content: string;
@@ -156,7 +156,11 @@ export class MigratedDataFactory {
       if (filename.endsWith('.json5')) {
         content = JSON5.stringify(migratedConfig, undefined, indentSpace);
       } else {
-        content = serializeJSON(migratedConfig, raw, indentSpace);
+        content = stringifyJsonPreservingComments(
+          migratedConfig,
+          raw,
+          indentSpace,
+        );
       }
 
       if (!content.endsWith('\n')) {

@@ -202,7 +202,7 @@ function updateObjectValue(prop: any, value: Record<string, unknown>): void {
  * @param indentSpaceFallback - The indentation string used during JSON.stringify fallback
  * @returns The serialized config string with preserved comments
  */
-export function serializeJSON(
+export function stringifyJsonPreservingComments(
   obj: object,
   originalContent: string | null,
   indentSpaceFallback = '  ',
