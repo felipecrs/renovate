@@ -10,17 +10,15 @@ function updateObject(
   targetObj: JsonObject,
   newObj: Record<string, unknown>,
 ): void {
-  // Get existing property keys in original order
+  // Build a map of existing properties by name
   const existingProps = new Map(
-    targetObj
-      .properties()
-      .map((prop: any) => [prop.name()?.decodedValue(), prop]),
+    targetObj.properties().map((prop) => [prop.name()?.decodedValue(), prop]),
   );
 
-  // Track which properties we've processed
+  // Track which existing properties we've already processed
   const processedKeys = new Set<string>();
 
-  // Track properties to be removed
+  // Identify properties to be removed (exist in old but not in new)
   const propsToRemove = new Set<string>();
   for (const key of existingProps.keys()) {
     if (!(key in newObj)) {
@@ -30,64 +28,57 @@ function updateObject(
 
   let insertIndex = 0;
 
-  // Update existing properties and insert new ones in the correct position
+  // Process each property in the new object
   for (const [key, value] of Object.entries(newObj)) {
     processedKeys.add(key);
     const existingProp = existingProps.get(key);
 
     if (existingProp) {
+      // Property exists - update its value in place
       updatePropertyValue(existingProp, value);
       insertIndex = existingProp.propertyIndex() + 1;
     } else {
-      // Check if there's a property being removed at this position that might be a rename
-      let renamedFrom: any = null;
+      // Property is new - check if it might be a rename
+      let renamedFromProp = null;
       for (const [oldKey, oldProp] of existingProps) {
         if (
           propsToRemove.has(oldKey as string) &&
           !processedKeys.has(oldKey as string) &&
           oldProp.propertyIndex() === insertIndex
         ) {
-          // Found a property at the same index being removed - likely a rename
-          renamedFrom = { key: oldKey, prop: oldProp };
+          // Found a property at the same position being removed - treat as rename
+          renamedFromProp = { key: oldKey, prop: oldProp };
           break;
         }
       }
 
-      if (renamedFrom) {
-        // This is a rename - replace the property in place
-        renamedFrom.prop.replaceWith(key, value);
-        processedKeys.add(renamedFrom.key);
-        propsToRemove.delete(renamedFrom.key);
-        insertIndex = renamedFrom.prop.propertyIndex() + 1;
+      if (renamedFromProp) {
+        // Rename: replace the old property with the new one in place
+        renamedFromProp.prop.replaceWith(key, value);
+        processedKeys.add(renamedFromProp.key);
+        propsToRemove.delete(renamedFromProp.key);
+        insertIndex = renamedFromProp.prop.propertyIndex() + 1;
 
-        // Format arrays as multiline if the new value is an array
+        // Format arrays as multiline
         if (Array.isArray(value) && value.length > 0) {
-          // Get the renamed property and format it
-          const updatedProp = targetObj.get(key);
-          if (updatedProp) {
-            const arrayValue = updatedProp.valueIfArray();
-            if (arrayValue) {
-              arrayValue.ensureMultiline();
-            }
-          }
+          const renamedProp = targetObj.get(key);
+          const arrayValue = renamedProp?.valueIfArray();
+          arrayValue?.ensureMultiline();
         }
       } else {
-        // Insert new property at the current position
+        // New property: insert at current position
         const newProp = targetObj.insert(insertIndex, key, value);
         insertIndex++;
 
         // Format arrays as multiline
         if (Array.isArray(value) && value.length > 0) {
-          const arrayValue = newProp.valueIfArray();
-          if (arrayValue) {
-            arrayValue.ensureMultiline();
-          }
+          newProp.valueIfArray()?.ensureMultiline();
         }
       }
     }
   }
 
-  // Remove properties that don't exist in migrated config
+  // Remove properties that no longer exist in the new object
   for (const [key, prop] of existingProps) {
     if (propsToRemove.has(key as string)) {
       prop.remove();
@@ -105,8 +96,52 @@ function updatePropertyValue(prop: any, value: unknown): void {
   } else if (value !== null && typeof value === 'object') {
     updateObjectValue(prop, value as Record<string, unknown>);
   } else {
-    // For primitive values, just update the value (preserves comments)
+    // For primitive values (string, number, boolean, null), just update
     prop.setValue(value);
+  }
+}
+
+/**
+ * Replaces a node with a new value. Handles all node types.
+ */
+function replaceNode(node: any, newValue: unknown): void {
+  if (node.isString()) {
+    node.asStringLit()?.replaceWith(newValue);
+  } else if (node.isNumber()) {
+    node.asNumberLit()?.replaceWith(newValue);
+  } else if (node.isBoolean()) {
+    node.asBooleanLit()?.replaceWith(newValue);
+  } else if (node.isNull()) {
+    node.asNullKeyword()?.replaceWith(newValue);
+  } else if (node.isContainer()) {
+    const asArray = node.asArray();
+    if (asArray) {
+      asArray.replaceWith(newValue);
+    } else {
+      node.asObject()?.replaceWith(newValue);
+    }
+  }
+}
+
+/**
+ * Removes a node from its parent. Handles all node types.
+ */
+function removeNode(node: any): void {
+  if (node.isString()) {
+    node.asStringLit()?.remove();
+  } else if (node.isNumber()) {
+    node.asNumberLit()?.remove();
+  } else if (node.isBoolean()) {
+    node.asBooleanLit()?.remove();
+  } else if (node.isNull()) {
+    node.asNullKeyword()?.remove();
+  } else if (node.isContainer()) {
+    const asArray = node.asArray();
+    if (asArray) {
+      asArray.remove();
+    } else {
+      node.asObject()?.remove();
+    }
   }
 }
 
@@ -118,52 +153,16 @@ function updateArrayValue(prop: any, value: unknown[]): void {
   if (existingArray) {
     const existingElements = existingArray.elements();
 
-    // Remove elements from the end first to avoid index issues
+    // Remove excess elements from the end first to avoid index issues
     for (let i = existingElements.length - 1; i >= value.length; i--) {
-      const element = existingElements[i];
-      // Use the typed node's remove method
-      if (element.isString()) {
-        element.asStringLit()?.remove();
-      } else if (element.isNumber()) {
-        element.asNumberLit()?.remove();
-      } else if (element.isBoolean()) {
-        element.asBooleanLit()?.remove();
-      } else if (element.isNull()) {
-        element.asNullKeyword()?.remove();
-      } else if (element.isContainer()) {
-        const asArray = element.asArray();
-        if (asArray) {
-          asArray.remove();
-        } else {
-          element.asObject()?.remove();
-        }
-      }
+      removeNode(existingElements[i]);
     }
 
     // Update or insert elements
     for (let i = 0; i < value.length; i++) {
       if (i < existingElements.length) {
-        // Get the specific typed node and use its replaceWith
-        const element = existingElements[i];
-        if (element.isString()) {
-          element.asStringLit()?.replaceWith(value[i]);
-        } else if (element.isNumber()) {
-          element.asNumberLit()?.replaceWith(value[i]);
-        } else if (element.isBoolean()) {
-          element.asBooleanLit()?.replaceWith(value[i]);
-        } else if (element.isNull()) {
-          element.asNullKeyword()?.replaceWith(value[i]);
-        } else if (element.isContainer()) {
-          // For arrays and objects, use the container's replaceWith
-          const asArray = element.asArray();
-          if (asArray) {
-            asArray.replaceWith(value[i]);
-          } else {
-            element.asObject()?.replaceWith(value[i]);
-          }
-        }
+        replaceNode(existingElements[i], value[i]);
       } else {
-        // Add new elements
         existingArray.append(value[i]);
       }
     }
@@ -185,22 +184,26 @@ function updateArrayValue(prop: any, value: unknown[]): void {
 function updateObjectValue(prop: any, value: Record<string, unknown>): void {
   const existingObj = prop.valueIfObject();
   if (existingObj) {
-    // Recursively update the nested object
+    // Object exists - recursively update it
     updateObject(existingObj, value);
   } else {
-    // Not an object currently, just replace the whole value
+    // Not an object currently - replace with the new object value
     prop.setValue(value);
   }
 }
 
 /**
  * Serializes an object to JSON while preserving comments and formatting from
- * the original JSON content. Fallbacks to JSON.stringify if parsing fails.
+ * the original JSON content.
+ *
+ * This function parses the original content with comments, updates it in place
+ * to match the new object structure, and returns the modified JSON string with
+ * comments preserved. Falls back to standard JSON.stringify if parsing fails.
  *
  * @param obj - The object to serialize
- * @param originalContent - The original JSON content with comments
- * @param indentSpaceFallback - The indentation string used during JSON.stringify fallback
- * @returns The serialized config string with preserved comments
+ * @param originalContent - The original JSON content with comments (null if unavailable)
+ * @param indentSpaceFallback - The indentation string for JSON.stringify fallback
+ * @returns The serialized JSON string with preserved comments
  */
 export function stringifyJsonPreservingComments(
   obj: object,
@@ -208,31 +211,26 @@ export function stringifyJsonPreservingComments(
   indentSpaceFallback = '  ',
 ): string {
   if (originalContent === null) {
-    // Comments cannot be preserved without original content
+    // No original content available - comments cannot be preserved
     return JSON.stringify(obj, undefined, indentSpaceFallback);
   }
 
-  let root;
-  let rootObj;
   try {
-    root = parse(originalContent, {
+    const root = parse(originalContent, {
       allowComments: true,
       allowTrailingCommas: true,
     });
-    rootObj = root.asObjectOrThrow();
+    const rootObj = root.asObjectOrThrow();
 
-    // Update the root object recursively
+    // Update the root object recursively to match the new structure
     updateObject(rootObj, obj as Record<string, unknown>);
 
-    const content = root.toString();
-    return content;
+    return root.toString();
   } catch (error) {
     logger.warn(
       { error },
-      'Failed to retain comments, falling back to standard JSON',
+      'Failed to preserve comments during JSON serialization, falling back to standard JSON',
     );
+    return JSON.stringify(obj, undefined, indentSpaceFallback);
   }
-
-  // Fallback to standard JSON serialization if parsing or updating fails
-  return JSON.stringify(obj, undefined, indentSpaceFallback);
 }
