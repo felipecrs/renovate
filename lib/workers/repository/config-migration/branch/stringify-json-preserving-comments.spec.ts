@@ -125,7 +125,7 @@ describe('workers/repository/config-migration/branch/stringify-json-preserving-c
       expect(result).toBe(expected);
       expect(logger.warn).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({ error: expect.any(Error) }),
-        'Failed to retain comments, falling back to standard JSON',
+        'Failed to preserve comments during JSON stringification, falling back to standard JSON',
       );
     });
 

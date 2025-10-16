@@ -229,7 +229,7 @@ export function stringifyJsonPreservingComments(
   } catch (error) {
     logger.warn(
       { error },
-      'Failed to preserve comments during JSON serialization, falling back to standard JSON',
+      'Failed to preserve comments during JSON stringification, falling back to standard JSON',
     );
     return JSON.stringify(obj, undefined, indentSpaceFallback);
   }
