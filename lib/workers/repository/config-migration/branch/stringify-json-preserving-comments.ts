@@ -220,17 +220,19 @@ export function stringifyJsonPreservingComments(
       allowTrailingCommas: true,
     });
     rootObj = root.asObjectOrThrow();
+
+    // Update the root object recursively
+    updateObject(rootObj, obj as Record<string, unknown>);
+
+    const content = root.toString();
+    return content;
   } catch (error) {
     logger.warn(
       { error },
       'Failed to retain comments, falling back to standard JSON',
     );
-    return JSON.stringify(obj, undefined, indentSpaceFallback);
   }
 
-  // Update the root object recursively
-  updateObject(rootObj, obj as Record<string, unknown>);
-
-  const content = root.toString();
-  return content;
+  // Fallback to standard JSON serialization if parsing or updating fails
+  return JSON.stringify(obj, undefined, indentSpaceFallback);
 }
