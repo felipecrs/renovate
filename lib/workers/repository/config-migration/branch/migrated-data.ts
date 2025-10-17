@@ -1,3 +1,4 @@
+import { weave } from '@felipecrs/jsonc-weaver';
 import is from '@sindresorhus/is';
 import detectIndent from 'detect-indent';
 import JSON5 from 'json5';
@@ -11,7 +12,6 @@ import { scm } from '../../../../modules/platform/scm';
 import { readLocalFile } from '../../../../util/fs';
 import { EditorConfig } from '../../../../util/json-writer';
 import { detectRepoFileConfig } from '../../init/merge';
-import { stringifyJsonPreservingComments } from './stringify-json-preserving-comments';
 
 export interface MigratedData {
   content: string;
@@ -155,12 +155,18 @@ export class MigratedDataFactory {
       let content: string;
       if (filename.endsWith('.json5')) {
         content = JSON5.stringify(migratedConfig, undefined, indentSpace);
+      } else if (raw) {
+        try {
+          content = weave(raw, migratedConfig);
+        } catch (err) {
+          logger.warn(
+            { err },
+            'Error weaving JSONC to preserve comments, falling back to JSON.stringify',
+          );
+          content = JSON.stringify(migratedConfig, undefined, indentSpace);
+        }
       } else {
-        content = stringifyJsonPreservingComments(
-          migratedConfig,
-          raw,
-          indentSpace,
-        );
+        content = JSON.stringify(migratedConfig, undefined, indentSpace);
       }
 
       if (!content.endsWith('\n')) {

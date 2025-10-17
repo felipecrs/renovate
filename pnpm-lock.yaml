@@ -41,6 +41,9 @@ importers:
       '@cdktf/hcl2json':
         specifier: 0.21.0
         version: 0.21.0
+      '@felipecrs/jsonc-weaver':
+        specifier: jsr:0.1.1
+        version: '@jsr/felipecrs__jsonc-weaver@0.1.1'
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -242,9 +245,6 @@ importers:
       jsonata:
         specifier: 2.1.0
         version: 2.1.0
-      jsonc-morph:
-        specifier: 0.2.0
-        version: 0.2.0
       jsonc-parser:
         specifier: 3.3.1
         version: 3.3.1
@@ -1250,6 +1250,9 @@ packages:
     engines: {node: '>=10.0'}
     peerDependencies:
       tslib: '2'
+
+  '@jsr/felipecrs__jsonc-weaver@0.1.1':
+    resolution: {integrity: sha512-bGqVtFjMf1BsUbRwDDkWxL5cL5HFEdyoJf3PWzeDSRcF38SlYJnNoykzpYzOKR2SpDD/LbyQJUbExwouiv1aVw==, tarball: https://npm.jsr.io/~/11/@jsr/felipecrs__jsonc-weaver/0.1.1.tgz}
 
   '@kwsites/file-exists@1.1.1':
     resolution: {integrity: sha512-m9/5YGR18lIwxSFDwfE3oA7bWuq9kdau6ugN4H2rJeyhFQZcG9AgSHkQtSD15a8WvTgfz9aikZMrKPHvbpqFiw==}
@@ -4388,9 +4391,6 @@ packages:
   jsonata@2.1.0:
     resolution: {integrity: sha512-OCzaRMK8HobtX8fp37uIVmL8CY1IGc/a6gLsDqz3quExFR09/U78HUzWYr7T31UEB6+Eu0/8dkVD5fFDOl9a8w==}
     engines: {node: '>= 8'}
-
-  jsonc-morph@0.2.0:
-    resolution: {integrity: sha512-cDug1d75RGRJIyJIcHYBOKibFMs6W4DpSh9kGgQ5ZBqP0bLf3etgarKIK6oZ4iW12y8WIq16UcgSYWENdN9zvQ==}
 
   jsonc-parser@3.3.1:
     resolution: {integrity: sha512-HUgH65KyejrUFPvHFPbqOY0rsFip3Bo5wb4ngvdi1EpCYWUQDC5V+Y7mZws+DLkr4M//zQJoanu1SP+87Dv1oQ==}
@@ -7780,6 +7780,8 @@ snapshots:
       '@jsonjoy.com/buffers': 1.2.0(tslib@2.8.1)
       '@jsonjoy.com/codegen': 1.0.0(tslib@2.8.1)
       tslib: 2.8.1
+
+  '@jsr/felipecrs__jsonc-weaver@0.1.1': {}
 
   '@kwsites/file-exists@1.1.1':
     dependencies:
@@ -11323,8 +11325,6 @@ snapshots:
   json5@2.2.3: {}
 
   jsonata@2.1.0: {}
-
-  jsonc-morph@0.2.0: {}
 
   jsonc-parser@3.3.1: {}
 
