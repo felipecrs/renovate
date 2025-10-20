@@ -22,5 +22,6 @@
   "pinVersions": false,  // this comment will be lost too
   "semanticCommits": true, // but this one stays
   "timezone": "US/Central",
+  // this should be preserved too
   "baseBranch": "main"
 }
