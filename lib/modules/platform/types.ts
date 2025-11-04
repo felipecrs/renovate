@@ -288,7 +288,18 @@ export interface Platform {
     branchName: string,
     internalChecksAsSuccess: boolean,
   ): Promise<BranchStatus>;
-  getBranchPr(branchName: string, targetBranch?: string): Promise<Pr | null>;
+  getBranchPr(
+    branchName: string,
+    /**
+     * Optional target branch to prioritize when multiple pull requests exist for
+     * the same source branch.
+     *
+     * This does not restrict results to PRs targeting this branch. Instead, if
+     * more than one PR matches the given source branch, the one whose target
+     * branch matches `targetBranch` will be preferred.
+     */
+    targetBranch?: string,
+  ): Promise<Pr | null>;
   tryReuseAutoclosedPr?(pr: Pr, newTitle: string): Promise<Pr | null>;
   initPlatform(config: PlatformParams): Promise<PlatformResult>;
   filterUnavailableUsers?(users: string[]): Promise<string[]>;
