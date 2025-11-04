@@ -241,6 +241,20 @@ describe('modules/platform/gerrit/index', () => {
       expect(clientMock.abandonChange).toHaveBeenCalledExactlyOnceWith(123456);
     });
 
+    it('updatePr() - open => restore the change', async () => {
+      const change = partial<GerritChange>({ status: 'ABANDONED' });
+      clientMock.getChange.mockResolvedValueOnce(change);
+      clientMock.restoreChange.mockResolvedValueOnce(
+        partial<GerritChange>({ status: 'NEW' }),
+      );
+      await gerrit.updatePr({
+        number: 123456,
+        prTitle: 'title',
+        state: 'open',
+      });
+      expect(clientMock.restoreChange).toHaveBeenCalledExactlyOnceWith(123456);
+    });
+
     it('updatePr() - targetBranch => move the change', async () => {
       const change = partial<GerritChange>({ branch: 'main' });
       clientMock.getChange.mockResolvedValueOnce(change);
@@ -446,6 +460,180 @@ describe('modules/platform/gerrit/index', () => {
       });
       clientMock.findChanges.mockResolvedValueOnce([change, change, change]);
       await expect(gerrit.getPrList()).resolves.toHaveLength(3);
+    });
+  });
+
+  describe('tryReuseAutoclosedPr()', () => {
+    it('should restore autoclosed change', async () => {
+      const autoclosedPr = {
+        number: 123456,
+        title: 'Update dependency - autoclosed',
+        sourceBranch: 'renovate/dependency-1.x',
+        state: 'closed' as const,
+        sha: 'abc123' as any,
+        closedAt: DateTime.now().minus({ days: 3 }).toISO(),
+      };
+
+      git.ensureBranchSha.mockResolvedValueOnce();
+      git.getBranchCommit.mockReturnValueOnce('abc123' as any);
+
+      const restoredChange = partial<GerritChange>({
+        _number: 123456,
+        status: 'NEW',
+        branch: 'main',
+        subject: 'Update dependency - autoclosed',
+        created: '2025-04-01 12:00:00.000000000',
+        hashtags: [],
+        current_revision: 'abc123',
+        revisions: {
+          abc123: partial<GerritRevisionInfo>({
+            commit_with_footers: 'Renovate-Branch: renovate/dependency-1.x',
+          }),
+        },
+      });
+
+      clientMock.restoreChange.mockResolvedValueOnce(restoredChange);
+
+      const result = await gerrit.tryReuseAutoclosedPr(
+        autoclosedPr,
+        'Update dependency',
+      );
+
+      expect(result).toMatchObject({
+        number: 123456,
+        state: 'open',
+        sourceBranch: 'renovate/dependency-1.x',
+        title: 'Update dependency',
+      });
+
+      expect(git.ensureBranchSha).toHaveBeenCalledExactlyOnceWith(
+        'renovate/dependency-1.x',
+        'abc123',
+      );
+      expect(clientMock.restoreChange).toHaveBeenCalledExactlyOnceWith(
+        123456,
+        'Restoring change as the update is relevant again',
+      );
+    });
+
+    it('should force push when local SHA differs from change SHA', async () => {
+      const autoclosedPr = {
+        number: 123456,
+        title: 'Update dependency - autoclosed',
+        sourceBranch: 'renovate/dependency-1.x',
+        state: 'closed' as const,
+        sha: 'abc123' as any,
+        closedAt: DateTime.now().minus({ days: 3 }).toISO(),
+      };
+
+      git.ensureBranchSha.mockResolvedValueOnce();
+      git.getBranchCommit.mockReturnValueOnce('def456' as any);
+      git.forcePushToRemote.mockResolvedValueOnce();
+
+      const restoredChange = partial<GerritChange>({
+        _number: 123456,
+        status: 'NEW',
+        branch: 'main',
+        subject: 'Update dependency',
+        created: '2025-04-01 12:00:00.000000000',
+        hashtags: [],
+        current_revision: 'abc123',
+        revisions: {
+          abc123: partial<GerritRevisionInfo>({
+            commit_with_footers: 'Renovate-Branch: renovate/dependency-1.x',
+          }),
+        },
+      });
+
+      clientMock.restoreChange.mockResolvedValueOnce(restoredChange);
+
+      const result = await gerrit.tryReuseAutoclosedPr(
+        autoclosedPr,
+        'Update dependency',
+      );
+
+      expect(result).toMatchObject({
+        number: 123456,
+        sha: 'def456',
+      });
+      expect(git.forcePushToRemote).toHaveBeenCalledExactlyOnceWith(
+        'renovate/dependency-1.x',
+        'origin',
+      );
+    });
+
+    it('should return null if branch recreation fails', async () => {
+      const autoclosedPr = {
+        number: 123456,
+        title: 'Update dependency - autoclosed',
+        sourceBranch: 'renovate/dependency-1.x',
+        state: 'closed' as const,
+        sha: 'abc123' as any,
+        closedAt: DateTime.now().minus({ days: 3 }).toISO(),
+      };
+
+      git.ensureBranchSha.mockRejectedValueOnce(
+        new Error('Branch recreation failed'),
+      );
+
+      const result = await gerrit.tryReuseAutoclosedPr(
+        autoclosedPr,
+        'Update dependency',
+      );
+
+      expect(result).toBeNull();
+      expect(clientMock.restoreChange).not.toHaveBeenCalled();
+    });
+
+    it('should return null if restore fails with 409 conflict', async () => {
+      const autoclosedPr = {
+        number: 123456,
+        title: 'Update dependency - autoclosed',
+        sourceBranch: 'renovate/dependency-1.x',
+        state: 'closed' as const,
+        sha: 'abc123' as any,
+        closedAt: DateTime.now().minus({ days: 3 }).toISO(),
+      };
+
+      git.ensureBranchSha.mockResolvedValueOnce();
+      git.getBranchCommit.mockReturnValueOnce('abc123' as any);
+
+      clientMock.restoreChange.mockRejectedValueOnce({
+        statusCode: 409,
+        message: 'change is new',
+      });
+
+      const result = await gerrit.tryReuseAutoclosedPr(
+        autoclosedPr,
+        'Update dependency',
+      );
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null if restore fails with other error', async () => {
+      const autoclosedPr = {
+        number: 123456,
+        title: 'Update dependency - autoclosed',
+        sourceBranch: 'renovate/dependency-1.x',
+        state: 'closed' as const,
+        sha: 'abc123' as any,
+        closedAt: DateTime.now().minus({ days: 3 }).toISO(),
+      };
+
+      git.ensureBranchSha.mockResolvedValueOnce();
+      git.getBranchCommit.mockReturnValueOnce('abc123' as any);
+
+      clientMock.restoreChange.mockRejectedValueOnce(
+        new Error('Unknown error'),
+      );
+
+      const result = await gerrit.tryReuseAutoclosedPr(
+        autoclosedPr,
+        'Update dependency',
+      );
+
+      expect(result).toBeNull();
     });
   });
 

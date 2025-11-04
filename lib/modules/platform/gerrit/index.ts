@@ -177,8 +177,10 @@ export async function updatePr(prConfig: UpdatePrConfig): Promise<void> {
   if (prConfig.targetBranch) {
     await client.moveChange(prConfig.number, prConfig.targetBranch);
   }
-  if (prConfig.state && prConfig.state === 'closed') {
+  if (prConfig.state === 'closed') {
     await client.abandonChange(prConfig.number);
+  } else if (prConfig.state === 'open') {
+    await client.restoreChange(prConfig.number);
   }
 }
 
@@ -245,6 +247,68 @@ export async function getPrList(): Promise<Pr[]> {
     requestDetails: REQUEST_DETAILS_FOR_PRS,
   });
   return changes.map((change) => mapGerritChangeToPr(change)).filter(isTruthy);
+}
+
+export async function tryReuseAutoclosedPr(
+  autoclosedPr: Pr,
+  newTitle: string,
+): Promise<Pr | null> {
+  const { sha, number, sourceBranch: branchName } = autoclosedPr;
+  try {
+    // First, ensure the branch exists with the correct SHA
+    await git.ensureBranchSha(branchName, sha!);
+    logger.debug(`Recreated autoclosed branch ${branchName} with sha ${sha}`);
+  } catch (err) {
+    logger.debug(
+      { err, branchName, sha, autoclosedPr },
+      'Could not recreate autoclosed branch - skipping reopen',
+    );
+    return null;
+  }
+
+  try {
+    // Restore the abandoned change
+    const restoredChange = await client.restoreChange(
+      number,
+      'Restoring change as the update is relevant again',
+    );
+    logger.info(
+      { branchName, oldTitle: autoclosedPr.title, newTitle, number },
+      'Successfully reopened autoclosed change',
+    );
+
+    // Update the change with the new title (subject) by amending the commit
+    // Note: In Gerrit, the title is part of the commit message, so we need to
+    // push a new patchset if the title differs. For now, we'll just return
+    // the restored change with updated details.
+    const result = mapGerritChangeToPr(restoredChange, {
+      sourceBranch: branchName,
+    });
+
+    if (!result) {
+      logger.warn('Could not map restored Gerrit change to PR');
+      return null;
+    }
+
+    // Update title to the new one (note: the actual Gerrit change subject
+    // won't change until a new patchset is pushed)
+    result.title = newTitle;
+
+    const localSha = git.getBranchCommit(branchName);
+    if (localSha && localSha !== sha) {
+      await git.forcePushToRemote(branchName, 'origin');
+      result.sha = localSha;
+    }
+
+    return result;
+  } catch (err) {
+    if (err.statusCode === 409) {
+      logger.debug('Change cannot be restored (possibly already open)');
+    } else {
+      logger.debug({ err }, 'Could not reopen autoclosed change');
+    }
+    return null;
+  }
 }
 
 export async function mergePr(config: MergePRConfig): Promise<boolean> {

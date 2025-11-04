@@ -295,6 +295,7 @@ describe('modules/platform/gerrit/scm', () => {
         'test/repo',
         {
           branchName: 'renovate/dependency-1.x',
+          state: 'open',
           targetBranch: 'main',
           requestDetails: ['CURRENT_REVISION'],
         },
