@@ -159,6 +159,16 @@ const options: RenovateOptions[] = [
     parents: ['bumpVersions'],
   },
   {
+    name: 'postInitTasks',
+    description:
+      'Post-initialization tasks that are executed after the repository is cloned/updated but before extraction.',
+    type: 'object',
+    default: {
+      commands: [],
+    },
+    cli: false,
+  },
+  {
     name: 'postUpgradeTasks',
     description:
       'Post-upgrade tasks that are executed before a commit is made by Renovate.',
@@ -172,10 +182,10 @@ const options: RenovateOptions[] = [
   {
     name: 'commands',
     description:
-      'A list of post-upgrade commands that are executed before a commit is made by Renovate.',
+      'A list of commands that are executed. For postInitTasks: after the repository is cloned/updated. For postUpgradeTasks: before a commit is made by Renovate.',
     type: 'array',
     subType: 'string',
-    parents: ['postUpgradeTasks'],
+    parents: ['postInitTasks', 'postUpgradeTasks'],
     default: [],
     cli: false,
   },

@@ -38,6 +38,7 @@ import handleError from './error';
 import { finalizeRepo } from './finalize';
 import { pruneStaleBranches } from './finalize/prune';
 import { initRepo } from './init';
+import { executePostInitCommands } from './init/execute-post-init-commands';
 import { OnboardingState } from './onboarding/common';
 import { ensureOnboardingPr } from './onboarding/pr';
 import { extractDependencies, updateRepo } from './process';
@@ -80,6 +81,7 @@ export async function renovateRepository(
         await fs.ensureDir(localDir);
         logger.debug('Using localDir: ' + localDir);
         config = await initRepo(config);
+        await executePostInitCommands(config);
         addSplit('init');
       } catch (err) /* istanbul ignore next */ {
         setMeta({ repository: config.repository });

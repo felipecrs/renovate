@@ -3923,6 +3923,45 @@ Table with options:
 | `yarnDedupeFewer`            | Run `yarn-deduplicate --strategy fewer` after `yarn.lock` updates.                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `yarnDedupeHighest`          | Run `yarn-deduplicate --strategy highest` (`yarn dedupe --strategy highest` for Yarn >=2.2.0) after `yarn.lock` updates.                                                                                                                                                                                                                                                                                                                                                           |
 
+## postInitTasks
+
+Post-initialization tasks are commands that are executed by Renovate after the repository is cloned and initialized but before dependency extraction begins.
+The intention is to run any preparatory command-line tools needed to set up the repository for Renovate's analysis.
+
+Post-init tasks are blocked by default for security reasons, so the admin of Renovate needs to choose whether to allow specific commands - it depends on how much they trust their users in repos.
+
+Each command must match at least one of the patterns defined in `allowedCommands` (a global-only configuration option) in order to be executed.
+If the list of allowed tasks is empty then no tasks will be executed.
+
+e.g.
+
+```json
+{
+  "postInitTasks": {
+    "commands": ["decrypt-secrets.sh", "npm run setup"]
+  }
+}
+```
+
+### commands
+
+A list of commands that are executed after the repository is initialized but before dependency extraction.
+
+Commands are executed in the repository root directory.
+
+Common use cases include:
+
+- Decrypting secrets or credentials needed for dependency resolution
+- Running setup scripts to generate lock files or configuration files
+- Installing tools or dependencies required for the package managers
+- Setting up monorepo tooling
+
+<!-- prettier-ignore -->
+!!! warning
+    Post-init commands run before Renovate has made any changes to the repository.
+    Any files created or modified by these commands are local to the Renovate workspace and will not be committed by Renovate.
+    These commands are intended to prepare the environment for dependency extraction only.
+
 ## postUpgradeTasks
 
 Post-upgrade tasks are commands that are executed by Renovate after a dependency has been updated but before the commit is created.

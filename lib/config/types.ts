@@ -119,6 +119,7 @@ export interface RenovateSharedConfig {
   pinDigests?: boolean;
   platformAutomerge?: boolean;
   platformCommit?: PlatformCommitOptions;
+  postInitTasks?: PostInitTasks;
   postUpgradeTasks?: PostUpgradeTasks;
   prBodyColumns?: string[];
   prBodyDefinitions?: Record<string, string>;
@@ -281,6 +282,10 @@ export interface LegacyAdminConfig {
 }
 
 export type ExecutionMode = 'branch' | 'update';
+
+export interface PostInitTasks {
+  commands?: string[];
+}
 
 export interface PostUpgradeTasks {
   commands?: string[];
@@ -589,6 +594,7 @@ export type AllowedParents =
   | 'hostRules'
   | 'logLevelRemap'
   | 'packageRules'
+  | 'postInitTasks'
   | 'postUpgradeTasks'
   | 'vulnerabilityAlerts'
   | ManagerName

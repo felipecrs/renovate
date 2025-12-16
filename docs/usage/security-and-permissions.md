@@ -93,6 +93,7 @@ This includes sensitive data that may be stored within the environment where Ren
 In certain scenarios, code from the monitored repository is executed as part of the update process.
 This is particularly true during, for example:
 
+- `postInitTasks`, where scripts specified by the repository are run after initialization
 - `postUpgradeTasks`, where scripts specified by the repository are run
 - when a wrapper within the repository is called, like `gradlew`
 
@@ -113,6 +114,8 @@ For instance:
 
 - updates that invoke Gradle (i.e. `./gradlew`), such as [updating the Gradle Wrapper](./modules/manager/gradle-wrapper/index.md) or [performing Gradle Verification Metadata](./modules/manager/gradle/index.md#dependency-verification)
   - because the Gradle buildscript is evaluated at this time (i.e. to determine which dependencies are available to then update the verification metadata)
+- executing any `postInitTasks` that may invoke external tools or scripts
+  - i.e. if you have a postInitTask to decrypt secrets using a third-party tool
 - executing any `postUpgradeTasks` in a way that may use an updated dependency
   - i.e. if you have a postUpgradeTask for `make docs`, where the version of your docs builder has updated
   - i.e. if your pre-commit hook, where the version of a linter has updated
@@ -148,9 +151,9 @@ Configure the environment running Renovate with the principle of least privilege
 Ensure that the Renovate process has only the permissions needed to perform its tasks and no more.
 This reduces the impact of any malicious code execution.
 
-###### Regularly review post-upgrade tasks
+###### Regularly review post-init and post-upgrade tasks
 
-Regularly review the actions taken by `postUpgradeTasks` to make sure they do not execute unnecessary or risky operations.
+Regularly review the actions taken by `postInitTasks` and `postUpgradeTasks` to make sure they do not execute unnecessary or risky operations.
 Consider implementing a review process for changes to these tasks within repositories.
 
 Where possible, restrict the commands executed to an allowlist you control, and try to limit the opportunity for those commands to execute additional commands.
