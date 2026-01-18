@@ -39,6 +39,7 @@ import {
   isDockerHost,
   sourceLabel,
   sourceLabels,
+  versionLabel,
 } from './common';
 import { DockerHubCache } from './dockerhub-cache';
 import { ecrPublicRegex, ecrRegex, isECRMaxResultsError } from './ecr';
@@ -1085,6 +1086,7 @@ export class DockerDatasource extends Datasource {
   async getReleases({
     packageName,
     registryUrl,
+    followTag,
   }: GetReleasesConfig): Promise<ReleaseResult | null> {
     const { registryHost, dockerRepository } = getRegistryRepository(
       packageName,
@@ -1158,6 +1160,37 @@ export class DockerDatasource extends Datasource {
         ret.homepage = labels[imageUrlLabel];
       }
     }
+
+    // Handle followTag
+    if (followTag && tags.includes(followTag)) {
+      const followTagLabels = await this.getLabels(
+        registryHost,
+        dockerRepository,
+        followTag,
+      );
+      if (followTagLabels && isNonEmptyString(followTagLabels[versionLabel])) {
+        ret.tags = {
+          [followTag]: followTagLabels[versionLabel],
+        };
+        logger.debug(
+          {
+            packageName,
+            followTag,
+            version: followTagLabels[versionLabel],
+          },
+          'Found version from followTag label',
+        );
+      } else {
+        logger.debug(
+          {
+            packageName,
+            followTag,
+          },
+          `No ${versionLabel} label found for followTag`,
+        );
+      }
+    }
+
     return ret;
   }
 }

@@ -2796,6 +2796,134 @@ describe('modules/datasource/docker/index', () => {
         releases: [{ version: '1.0.0' }],
       });
     });
+
+    it('supports followTag', async () => {
+      httpMock
+        .scope('https://registry.company.com/v2')
+        .get('/')
+        .times(3)
+        .reply(200)
+        .get('/node/tags/list?n=10000')
+        .reply(200)
+        .get('/node/tags/list?n=10000')
+        .reply(200, {
+          tags: ['latest', '1.0.0', '2.0.0'],
+        })
+        .get('/node/manifests/2.0.0')
+        .reply(200, {
+          schemaVersion: 2,
+          mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
+          config: {
+            digest: 'some-config-digest',
+            mediaType: 'application/vnd.docker.container.image.v1+json',
+          },
+        })
+        .get('/node/blobs/some-config-digest')
+        .reply(200, {
+          architecture: 'amd64',
+          config: {
+            Labels: {},
+          },
+        })
+        .get('/node/manifests/latest')
+        .reply(200, {
+          schemaVersion: 2,
+          mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
+          config: {
+            digest: 'latest-config-digest',
+            mediaType: 'application/vnd.docker.container.image.v1+json',
+          },
+        })
+        .get('/node/blobs/latest-config-digest')
+        .reply(200, {
+          architecture: 'amd64',
+          config: {
+            Labels: {
+              'org.opencontainers.image.version': '2.0.0',
+            },
+          },
+        });
+      const res = await getPkgReleases({
+        datasource: DockerDatasource.id,
+        packageName: 'registry.company.com/node',
+        followTag: 'latest',
+      });
+      expect(res).toEqual({
+        lookupName: 'node',
+        registryUrl: 'https://registry.company.com',
+        releases: [
+          { version: 'latest' },
+          { version: '1.0.0' },
+          { version: '2.0.0' },
+        ],
+        tags: {
+          latest: '2.0.0',
+        },
+      });
+    });
+
+    it('handles followTag without version label', async () => {
+      httpMock
+        .scope('https://registry.company.com/v2')
+        .get('/')
+        .times(3)
+        .reply(200)
+        .get('/node/tags/list?n=10000')
+        .reply(200)
+        .get('/node/tags/list?n=10000')
+        .reply(200, {
+          tags: ['latest', '1.0.0'],
+        })
+        .get('/node/manifests/1.0.0')
+        .reply(200, {
+          schemaVersion: 2,
+          mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
+          config: {
+            digest: 'some-config-digest',
+            mediaType: 'application/vnd.docker.container.image.v1+json',
+          },
+        })
+        .get('/node/blobs/some-config-digest')
+        .reply(200, {
+          architecture: 'amd64',
+          config: {
+            Labels: {},
+          },
+        })
+        .get('/node/manifests/latest')
+        .reply(200, {
+          schemaVersion: 2,
+          mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
+          config: {
+            digest: 'latest-config-digest',
+            mediaType: 'application/vnd.docker.container.image.v1+json',
+          },
+        })
+        .get('/node/blobs/latest-config-digest')
+        .reply(200, {
+          architecture: 'amd64',
+          config: {
+            Labels: {},
+          },
+        });
+      const res = await getPkgReleases({
+        datasource: DockerDatasource.id,
+        packageName: 'registry.company.com/node',
+        followTag: 'latest',
+      });
+      expect(res).toEqual({
+        lookupName: 'node',
+        registryUrl: 'https://registry.company.com',
+        releases: [{ version: 'latest' }, { version: '1.0.0' }],
+      });
+      expect(logger.logger.debug).toHaveBeenCalledWith(
+        expect.objectContaining({
+          packageName: 'registry.company.com/node',
+          followTag: 'latest',
+        }),
+        'No org.opencontainers.image.version label found for followTag',
+      );
+    });
   });
 
   describe('getLabels', () => {

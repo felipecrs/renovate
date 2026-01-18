@@ -32,6 +32,7 @@ export interface GetReleasesConfig {
   packageName: string;
   registryUrl?: string;
   currentValue?: string;
+  followTag?: string;
 }
 
 export interface GetPkgReleasesConfig {
