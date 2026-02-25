@@ -1,12 +1,14 @@
 import { ERROR, WARN } from 'bunyan';
 import fs from 'fs-extra';
 import type { RenovateConfig } from '~test/util.ts';
-import { logger } from '~test/util.ts';
+import { fs as localFs, logger, scm } from '~test/util.ts';
 import { GlobalConfig } from '../../config/global.ts';
 import { DockerDatasource } from '../../modules/datasource/docker/index.ts';
 import * as platform from '../../modules/platform/index.ts';
+import * as memCache from '../../util/cache/memory/index.ts';
 import * as secrets from '../../util/sanitize.ts';
 import * as repositoryWorker from '../repository/index.ts';
+import { mergeRenovateConfig } from '../repository/init/merge.ts';
 import * as configParser from './config/parse/index.ts';
 import * as globalWorker from './index.ts';
 import * as limits from './limits.ts';
@@ -75,51 +77,227 @@ describe('workers/global/index', () => {
       expect(repoConfig.repository).toBe('a/b');
     });
 
-    it('should resolve repository-level presets before merging with global config', async () => {
-      const globalConfigWithPackageRules: RenovateConfig = {
+    it('should resolve configs and presets in the right order - renovate.json', async () => {
+      memCache.init();
+
+      const globalPreset1Rule = {
+        matchPackageNames: ['globalPreset1Dep'],
+        enabled: false,
+      };
+      const globalPreset2Rule = {
+        matchPackageNames: ['globalPreset2Dep'],
+        enabled: false,
+      };
+      const renovateJsonPresetRule = {
+        matchPackageNames: ['renovateJsonPresetDep'],
+        enabled: false,
+      };
+      const globalRule = {
+        matchPackageNames: ['globalDep'],
+        enabled: false,
+      };
+      const renovateJsonRule = {
+        matchPackageNames: ['renovateJsonDep'],
+        enabled: false,
+      };
+
+      memCache.set('preset::globalPreset1', {
+        packageRules: [globalPreset1Rule],
+      });
+      memCache.set('preset::globalPreset2', {
+        packageRules: [globalPreset2Rule],
+      });
+      memCache.set('preset::renovateJsonPreset', {
+        packageRules: [renovateJsonPresetRule],
+      });
+
+      const globalConfig: RenovateConfig = {
         baseDir: '/tmp/base',
-        packageRules: [
-          {
-            description: 'global rule',
-            matchManagers: ['npm'],
-            enabled: false,
-          },
-        ],
+        extends: [':globalPreset1', ':globalPreset2'],
+        packageRules: [globalRule],
       };
-      const repository = {
-        repository: 'test/repo',
-        // :approveMajorUpdates has packageRules with dependencyDashboardApproval
-        extends: [':approveMajorUpdates'],
-        packageRules: [
-          {
-            description: 'repo rule',
-            matchPackageNames: ['lodash'],
-            enabled: true,
-          },
-        ],
-      };
-      const repoConfig = await globalWorker.getRepositoryConfig(
-        globalConfigWithPackageRules,
-        repository,
+
+      const repositoryConfig = await globalWorker.getRepositoryConfig(
+        globalConfig,
+        'test/repo',
       );
 
-      // Verify packageRules exist and have the correct merge order:
-      // 1. Global config packageRules
-      // 2. Preset packageRules (from :approveMajorUpdates)
-      // 3. Repository packageRules
-      expect(repoConfig.packageRules).toMatchObject([
-        {
-          description: 'global rule',
-          matchManagers: ['npm'],
-        },
-        {
-          dependencyDashboardApproval: true,
-          matchUpdateTypes: ['major'],
-        },
-        {
-          description: 'repo rule',
-          matchPackageNames: ['lodash'],
-        },
+      scm.getFileList.mockResolvedValue(['renovate.json']);
+      localFs.readLocalFile.mockResolvedValue(
+        JSON.stringify({
+          extends: [':renovateJsonPreset'],
+          ignorePresets: [':globalPreset2'],
+          packageRules: [renovateJsonRule],
+        }),
+      );
+
+      const mergedConfig = await mergeRenovateConfig(repositoryConfig);
+
+      expect(mergedConfig.packageRules).toMatchObject([
+        globalRule,
+        globalPreset1Rule, // ./docs/usage/config-overview.md#L314
+        // NOT globalPreset2Rule: suppressed by renovate.json's ignorePresets
+        renovateJsonPresetRule,
+        renovateJsonRule,
+      ]);
+    });
+
+    it('should resolve configs and presets in the right order - repositories array', async () => {
+      memCache.init();
+
+      const globalPreset1Rule = {
+        matchPackageNames: ['globalPreset1Dep'],
+        enabled: false,
+      };
+      const globalPreset2Rule = {
+        matchPackageNames: ['globalPreset2Dep'],
+        enabled: false,
+      };
+      const repositoryEntryPresetRule = {
+        matchPackageNames: ['repositoryEntryPresetDep'],
+        enabled: false,
+      };
+      const globalRule = {
+        matchPackageNames: ['globalDep'],
+        enabled: false,
+      };
+      const repositoryEntryRule = {
+        matchPackageNames: ['repositoryEntryDep'],
+        enabled: false,
+      };
+
+      memCache.set('preset::globalPreset1', {
+        packageRules: [globalPreset1Rule],
+      });
+      memCache.set('preset::globalPreset2', {
+        packageRules: [globalPreset2Rule],
+      });
+      memCache.set('preset::repositoryEntryPreset', {
+        packageRules: [repositoryEntryPresetRule],
+      });
+
+      const globalConfig: RenovateConfig = {
+        baseDir: '/tmp/base',
+        extends: [':globalPreset1', ':globalPreset2'],
+        packageRules: [globalRule],
+      };
+
+      const repositoryEntry = {
+        repository: 'test/repo',
+        extends: [':repositoryEntryPreset'],
+        ignorePresets: [':globalPreset2'],
+        packageRules: [repositoryEntryRule],
+      };
+
+      const repositoryConfig = await globalWorker.getRepositoryConfig(
+        globalConfig,
+        repositoryEntry,
+      );
+
+      scm.getFileList.mockResolvedValue(['renovate.json']);
+      localFs.readLocalFile.mockResolvedValue(JSON.stringify({}));
+
+      const mergedConfig = await mergeRenovateConfig(repositoryConfig);
+
+      expect(mergedConfig.packageRules).toMatchObject([
+        globalRule,
+        globalPreset1Rule, // ./docs/usage/config-overview.md#L314
+        // NOT globalPreset2Rule: suppressed by repositoryEntry's ignorePresets
+        repositoryEntryPresetRule,
+        repositoryEntryRule,
+      ]);
+    });
+
+    it('should resolve configs and presets in the right order - repositories array and renovate.json', async () => {
+      memCache.init();
+
+      const globalPreset1Rule = {
+        matchPackageNames: ['globalPreset1Dep'],
+        enabled: false,
+      };
+      const globalPreset2Rule = {
+        matchPackageNames: ['globalPreset2Dep'],
+        enabled: false,
+      };
+      const globalPreset3Rule = {
+        matchPackageNames: ['globalPreset3Dep'],
+        enabled: false,
+      };
+      const repositoryEntryPresetRule = {
+        matchPackageNames: ['repositoryEntryPresetDep'],
+        enabled: false,
+      };
+      const globalRule = {
+        matchPackageNames: ['globalDep'],
+        enabled: false,
+      };
+      const repositoryEntryRule = {
+        matchPackageNames: ['repositoryEntryDep'],
+        enabled: false,
+      };
+      const renovateJsonPresetRule = {
+        matchPackageNames: ['renovateJsonPresetDep'],
+        enabled: false,
+      };
+      const renovateJsonRule = {
+        matchPackageNames: ['renovateJsonDep'],
+        enabled: false,
+      };
+
+      memCache.set('preset::globalPreset1', {
+        packageRules: [globalPreset1Rule],
+      });
+      memCache.set('preset::globalPreset2', {
+        packageRules: [globalPreset2Rule],
+      });
+      memCache.set('preset::globalPreset3', {
+        packageRules: [globalPreset3Rule],
+      });
+      memCache.set('preset::repositoryEntryPreset', {
+        packageRules: [repositoryEntryPresetRule],
+      });
+      memCache.set('preset::renovateJsonPreset', {
+        packageRules: [renovateJsonPresetRule],
+      });
+
+      const globalConfig: RenovateConfig = {
+        baseDir: '/tmp/base',
+        extends: [':globalPreset1', ':globalPreset2', ':globalPreset3'],
+        packageRules: [globalRule],
+      };
+
+      const repositoryEntry = {
+        repository: 'test/repo',
+        extends: [':repositoryEntryPreset'],
+        ignorePresets: [':globalPreset2'],
+        packageRules: [repositoryEntryRule],
+      };
+
+      const repositoryConfig = await globalWorker.getRepositoryConfig(
+        globalConfig,
+        repositoryEntry,
+      );
+
+      scm.getFileList.mockResolvedValue(['renovate.json']);
+      localFs.readLocalFile.mockResolvedValue(
+        JSON.stringify({
+          extends: [':renovateJsonPreset'],
+          ignorePresets: [':globalPreset3'],
+          packageRules: [renovateJsonRule],
+        }),
+      );
+
+      const mergedConfig = await mergeRenovateConfig(repositoryConfig);
+
+      expect(mergedConfig.packageRules).toMatchObject([
+        globalRule,
+        globalPreset1Rule, // ./docs/usage/config-overview.md#L314
+        // NOT globalPreset2Rule: suppressed by repositoryEntry's ignorePresets
+        // NOT globalPreset3Rule: suppressed by renovate.json's ignorePresets
+        repositoryEntryPresetRule,
+        repositoryEntryRule,
+        renovateJsonPresetRule,
+        renovateJsonRule,
       ]);
     });
   });
