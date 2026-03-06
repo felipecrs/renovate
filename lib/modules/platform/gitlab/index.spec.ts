@@ -3426,6 +3426,7 @@ describe('modules/platform/gitlab/index', () => {
         bodyStruct: {
           hash: '23f41dbec0785a6c77457dd6ebf99ae5970c5fffc9f7a8ad7f66c1b8eeba5b90',
         },
+        hasApproval: false,
         hasAssignees: false,
         headPipelineStatus: undefined,
         headPipelineSha: undefined,

@@ -102,6 +102,38 @@ describe('modules/platform/azure/util', () => {
       const res = getRenovatePRFormat({ status: 1 } as any);
       expect(res).toMatchSnapshot();
     });
+
+    it('should set hasApproval to true when the bot user has approved', () => {
+      const res = getRenovatePRFormat({
+        status: 1,
+        createdBy: { id: 'bot-user' },
+        reviewers: [{ vote: 10, id: 'bot-user' }],
+      } as any);
+      expect(res.hasApproval).toBeTrue();
+    });
+
+    it('should set hasApproval to false when only another user has approved', () => {
+      const res = getRenovatePRFormat({
+        status: 1,
+        createdBy: { id: 'bot-user' },
+        reviewers: [{ vote: 10, id: 'other-user' }],
+      } as any);
+      expect(res.hasApproval).toBeFalse();
+    });
+
+    it('should set hasApproval to false when the bot user has not approved', () => {
+      const res = getRenovatePRFormat({
+        status: 1,
+        createdBy: { id: 'bot-user' },
+        reviewers: [{ vote: 0, id: 'bot-user' }],
+      } as any);
+      expect(res.hasApproval).toBeFalse();
+    });
+
+    it('should set hasApproval to false when there are no reviewers', () => {
+      const res = getRenovatePRFormat({ status: 1 } as any);
+      expect(res.hasApproval).toBeFalse();
+    });
   });
 
   describe('streamToString', () => {

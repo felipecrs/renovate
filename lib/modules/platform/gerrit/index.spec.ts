@@ -299,6 +299,27 @@ describe('modules/platform/gerrit/index', () => {
         TAG_PULL_REQUEST_BODY,
       );
     });
+
+    it('updatePr() - needsApproval => set Code-Review+2 label', async () => {
+      await gerrit.updatePr({
+        number: 123456,
+        prTitle: 'title',
+        needsApproval: true,
+      });
+      expect(clientMock.setLabel).toHaveBeenCalledExactlyOnceWith(
+        123456,
+        'Code-Review',
+        2,
+      );
+    });
+
+    it('updatePr() - needsApproval not set => does not set Code-Review+2 label', async () => {
+      await gerrit.updatePr({
+        number: 123456,
+        prTitle: 'title',
+      });
+      expect(clientMock.setLabel).not.toHaveBeenCalled();
+    });
   });
 
   it('updatePr() - targetBranch set => move the change', async () => {

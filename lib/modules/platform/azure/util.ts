@@ -15,6 +15,7 @@ import { addSecretForSanitizing } from '../../../util/sanitize.ts';
 import { toBase64 } from '../../../util/string.ts';
 import { getPrBodyStruct } from '../pr-body.ts';
 import type { AzurePr } from './types.ts';
+import { AzurePrVote } from './types.ts';
 
 export function getGitStatusContextCombinedName(
   context: GitStatusContext | null | undefined,
@@ -104,6 +105,13 @@ export function getRenovatePRFormat(azurePr: GitPullRequest): AzurePr {
 
   const sourceRefName = azurePr.sourceRefName;
 
+  const hasApproval =
+    azurePr.reviewers?.some(
+      (reviewer) =>
+        reviewer.id === azurePr.createdBy?.id &&
+        (reviewer.vote ?? 0) >= AzurePrVote.Approved,
+    ) === true;
+
   return {
     ...azurePr,
     sourceBranch,
@@ -113,6 +121,7 @@ export function getRenovatePRFormat(azurePr: GitPullRequest): AzurePr {
     sourceRefName,
     targetBranch,
     createdAt,
+    hasApproval,
   } as AzurePr;
 }
 

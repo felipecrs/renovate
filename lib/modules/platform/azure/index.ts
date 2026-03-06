@@ -572,6 +572,7 @@ export async function updatePr({
   state,
   platformPrOptions,
   targetBranch,
+  needsApproval,
 }: UpdatePrConfig): Promise<void> {
   logger.debug(`updatePr(${prNo}, ${title}, body)`);
 
@@ -599,7 +600,7 @@ export async function updatePr({
   } else if (state === 'closed') {
     objToUpdate.status = PullRequestStatus.Abandoned;
   }
-  if (platformPrOptions?.autoApprove) {
+  if (platformPrOptions?.autoApprove || needsApproval) {
     const pr = await azureApiGit.getPullRequestById(prNo, config.project);
     await azureApiGit.createPullRequestReviewer(
       {

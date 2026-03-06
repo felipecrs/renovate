@@ -14,6 +14,12 @@ import type { GitlabPr, RepoResponse } from './types.ts';
 export const DRAFT_PREFIX = 'Draft: ';
 export const DRAFT_PREFIX_DEPRECATED = 'WIP: ';
 
+let botUserLogin: string | undefined;
+
+export function setBotUserLogin(login: string): void {
+  botUserLogin = login;
+}
+
 export const defaults = {
   hostType: 'gitlab',
   endpoint: 'https://gitlab.com/api/v4/',
@@ -29,6 +35,9 @@ export function prInfo(mr: GitLabMergeRequest): GitlabPr {
     title: mr.title,
     createdAt: mr.created_at,
     hasAssignees: !!(mr.assignee?.id ?? mr.assignees?.[0]?.id),
+    hasApproval: botUserLogin
+      ? mr.approved_by?.some((u) => u.username === botUserLogin) === true
+      : (mr.approved_by?.length ?? 0) > 0,
     bodyStruct: getPrBodyStruct(mr.description),
 
     ...(mr.target_branch && { targetBranch: mr.target_branch }),

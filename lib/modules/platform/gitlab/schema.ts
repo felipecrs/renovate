@@ -31,6 +31,7 @@ export const GitLabMergeRequestSchema = z.object({
   assignee: GitlabUserSchema.nullish(),
   assignees: LooseArray(GitlabUserSchema).catch([]),
   reviewers: LooseArray(GitlabUserSchema).catch([]),
+  approved_by: LooseArray(GitlabUserSchema).catch([]),
   labels: z.array(z.string()).optional(),
   sha: LongCommitShaSchema.nullish(),
   head_pipeline: z

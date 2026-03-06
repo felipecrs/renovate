@@ -408,11 +408,16 @@ export async function ensurePr(
         configuredLabels,
       );
 
+      const needsAutoApproval =
+        getPlatformPrOptions(config).autoApprove === true &&
+        existingPr.hasApproval === false;
+
       if (
         existingPr?.targetBranch === config.baseBranch &&
         existingPrTitle === newPrTitle &&
         existingPrBodyHash === newPrBodyHash &&
-        !labelsNeedUpdate
+        !labelsNeedUpdate &&
+        !needsAutoApproval
       ) {
         // adds or-cache for existing PRs
         setPrCache(branchName, prBodyFingerprint, false);
@@ -427,6 +432,7 @@ export async function ensurePr(
         prTitle,
         prBody,
         platformPrOptions: getPlatformPrOptions(config),
+        ...(needsAutoApproval && { needsApproval: true }),
       };
       // PR must need updating
       if (existingPr?.targetBranch !== config.baseBranch) {

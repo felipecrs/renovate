@@ -21,6 +21,7 @@ const baseUrl = 'https://gerrit.example.com';
 describe('modules/platform/gerrit/utils', () => {
   beforeEach(() => {
     setBaseUrl(baseUrl);
+    utils.setBotUsername('');
   });
 
   describe('getGerritRepoUrl()', () => {
@@ -119,6 +120,7 @@ describe('modules/platform/gerrit/utils', () => {
         state: 'open',
         title: 'Fix for',
         createdAt: '2025-04-14T16:33:37.000000000',
+        hasApproval: false,
         sourceBranch: 'renovate/dependency-1.x',
         targetBranch: 'main',
         labels: ['hashtag1', 'hashtag2'],
@@ -150,6 +152,7 @@ describe('modules/platform/gerrit/utils', () => {
         number: 123456,
         state: 'open',
         title: 'Fix for',
+        hasApproval: false,
         sourceBranch: 'renovate/dependency-1.x',
         targetBranch: 'main',
         reviewers: [],
@@ -202,6 +205,7 @@ describe('modules/platform/gerrit/utils', () => {
         number: 123456,
         state: 'open',
         title: 'Fix for',
+        hasApproval: false,
         sourceBranch: 'renovate/dependency-1.x',
         targetBranch: 'main',
         reviewers: [],
@@ -236,6 +240,7 @@ describe('modules/platform/gerrit/utils', () => {
         number: 123456,
         state: 'open',
         title: 'Fix for',
+        hasApproval: false,
         sourceBranch: 'renovate/dependency-1.x',
         targetBranch: 'main',
         reviewers: [],
@@ -244,6 +249,112 @@ describe('modules/platform/gerrit/utils', () => {
           hash: hashBody('PR Body'),
         },
         createdAt: '2025-04-14T16:33:37.000000000',
+      });
+    });
+
+    it('sets hasApproval to true when Code-Review label is approved', () => {
+      const change = partial<GerritChange>({
+        _number: 123456,
+        status: 'NEW',
+        branch: 'main',
+        subject: 'Fix for',
+        labels: {
+          'Code-Review': {
+            approved: partial<GerritAccountInfo>({ _account_id: 1 }),
+          },
+        },
+        current_revision: 'abc',
+        revisions: {
+          abc: partial<GerritRevisionInfo>({
+            commit_with_footers:
+              'Some change\n\nRenovate-Branch: renovate/dependency-1.x\nChange-Id: ...',
+          }),
+        },
+        created: '2025-04-14 16:33:37.000000000',
+      });
+      expect(utils.mapGerritChangeToPr(change)).toMatchObject({
+        hasApproval: true,
+      });
+    });
+
+    it('sets hasApproval to true when Code-Review approved by bot user', () => {
+      utils.setBotUsername('renovate-bot');
+      const change = partial<GerritChange>({
+        _number: 123456,
+        status: 'NEW',
+        branch: 'main',
+        subject: 'Fix for',
+        labels: {
+          'Code-Review': {
+            approved: partial<GerritAccountInfo>({
+              _account_id: 1,
+              username: 'renovate-bot',
+            }),
+          },
+        },
+        current_revision: 'abc',
+        revisions: {
+          abc: partial<GerritRevisionInfo>({
+            commit_with_footers:
+              'Some change\n\nRenovate-Branch: renovate/dependency-1.x\nChange-Id: ...',
+          }),
+        },
+        created: '2025-04-14 16:33:37.000000000',
+      });
+      expect(utils.mapGerritChangeToPr(change)).toMatchObject({
+        hasApproval: true,
+      });
+    });
+
+    it('sets hasApproval to false when Code-Review approved by another user', () => {
+      utils.setBotUsername('renovate-bot');
+      const change = partial<GerritChange>({
+        _number: 123456,
+        status: 'NEW',
+        branch: 'main',
+        subject: 'Fix for',
+        labels: {
+          'Code-Review': {
+            approved: partial<GerritAccountInfo>({
+              _account_id: 2,
+              username: 'other-user',
+            }),
+          },
+        },
+        current_revision: 'abc',
+        revisions: {
+          abc: partial<GerritRevisionInfo>({
+            commit_with_footers:
+              'Some change\n\nRenovate-Branch: renovate/dependency-1.x\nChange-Id: ...',
+          }),
+        },
+        created: '2025-04-14 16:33:37.000000000',
+      });
+      expect(utils.mapGerritChangeToPr(change)).toMatchObject({
+        hasApproval: false,
+      });
+    });
+
+    it('sets hasApproval to false when Code-Review label is not approved', () => {
+      const change = partial<GerritChange>({
+        _number: 123456,
+        status: 'NEW',
+        branch: 'main',
+        subject: 'Fix for',
+        labels: {
+          'Code-Review': {},
+        },
+        current_revision: 'abc',
+        revisions: {
+          abc: partial<GerritRevisionInfo>({
+            commit_with_footers:
+              'Some change\n\nRenovate-Branch: renovate/dependency-1.x\nChange-Id: ...',
+          }),
+        },
+        created: '2025-04-14 16:33:37.000000000',
+      });
+      expect(utils.mapGerritChangeToPr(change)).toMatchObject({
+        hasApproval: false,
       });
     });
   });

@@ -74,6 +74,7 @@ import {
   defaults,
   getRepoUrl,
   prInfo,
+  setBotUserLogin,
 } from './utils.ts';
 
 export { extractRulesFromCodeOwnersLines } from './code-owners.ts';
@@ -131,6 +132,7 @@ export async function initPlatform({
           email: EmailAddress;
           name: string;
           id: number;
+          username: string;
           commit_email?: EmailAddress;
         }>(`user`, { token })
       ).body;
@@ -138,6 +140,7 @@ export async function initPlatform({
         user.commit_email ?? user.email
       }>`;
       botUserName = user.name;
+      setBotUserLogin(user.username);
     }
     const env = getEnv();
     /* v8 ignore next: experimental feature */
@@ -167,6 +170,9 @@ export async function initPlatform({
     : DRAFT_PREFIX;
 
   botUserName ??= username!;
+  if (username) {
+    setBotUserLogin(username);
+  }
 
   return platformConfig;
 }
@@ -749,6 +755,7 @@ export async function updatePr({
   state,
   platformPrOptions,
   targetBranch,
+  needsApproval,
 }: UpdatePrConfig): Promise<void> {
   let title = prTitle;
   if ((await getPrList()).find((pr) => pr.number === iid)?.isDraft) {
@@ -793,7 +800,7 @@ export async function updatePr({
     !!config.ignorePrAuthor,
   );
 
-  if (platformPrOptions?.autoApprove) {
+  if (platformPrOptions?.autoApprove || needsApproval) {
     await approveMr(iid);
   }
 }

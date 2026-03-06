@@ -254,6 +254,7 @@ describe('modules/platform/azure/index', () => {
           hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
         },
         createdAt: undefined,
+        hasApproval: false,
         number: 1,
         pullRequestId: 1,
         sourceBranch: 'branch-a',
@@ -296,6 +297,7 @@ describe('modules/platform/azure/index', () => {
           hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
         },
         createdAt: undefined,
+        hasApproval: false,
         number: 1,
         pullRequestId: 1,
         sourceBranch: 'branch-a',
@@ -338,6 +340,7 @@ describe('modules/platform/azure/index', () => {
           hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
         },
         createdAt: undefined,
+        hasApproval: false,
         number: 1,
         pullRequestId: 1,
         sourceBranch: 'branch-a',
@@ -379,6 +382,7 @@ describe('modules/platform/azure/index', () => {
           hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
         },
         createdAt: undefined,
+        hasApproval: false,
         number: 1,
         pullRequestId: 1,
         sourceBranch: 'branch-a',
@@ -427,6 +431,7 @@ describe('modules/platform/azure/index', () => {
           hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
         },
         createdAt: undefined,
+        hasApproval: false,
         number: 2,
         pullRequestId: 2,
         sourceBranch: 'branch-a',
@@ -475,6 +480,7 @@ describe('modules/platform/azure/index', () => {
           hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
         },
         createdAt: undefined,
+        hasApproval: false,
         number: 1,
         pullRequestId: 1,
         sourceBranch: 'branch-a',
@@ -550,6 +556,7 @@ describe('modules/platform/azure/index', () => {
           hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
         },
         createdAt: undefined,
+        hasApproval: false,
         labels: [],
         number: 1,
         pullRequestId: 1,
@@ -1339,6 +1346,43 @@ describe('modules/platform/azure/index', () => {
       });
       expect(updateFn).toHaveBeenCalled();
       expect(pr).toMatchSnapshot();
+    });
+
+    it('should approve the PR via needsApproval', async () => {
+      await initRepo({ repository: 'some/repo' });
+      const prResult = {
+        pullRequestId: 456,
+        createdBy: {
+          id: 123,
+          url: 'user-url',
+        },
+      };
+      const updateFn = vi.fn();
+      azureApi.gitApi.mockImplementationOnce(
+        () =>
+          ({
+            updatePullRequest: vi.fn(() => prResult),
+            createPullRequestReviewer: updateFn,
+            getPullRequestById: vi.fn(() => ({
+              pullRequestId: prResult.pullRequestId,
+              createdBy: prResult.createdBy,
+            })),
+          }) as any,
+      );
+      await azure.updatePr({
+        number: prResult.pullRequestId,
+        prTitle: 'The Title',
+        prBody: 'Hello world',
+        needsApproval: true,
+      });
+      expect(updateFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          vote: AzurePrVote.Approved,
+        }),
+        expect.anything(),
+        prResult.pullRequestId,
+        prResult.createdBy.id,
+      );
     });
   });
 

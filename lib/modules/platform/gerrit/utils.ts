@@ -18,6 +18,12 @@ export const MIN_GERRIT_VERSION = '3.0.0';
 
 export const TAG_PULL_REQUEST_BODY = 'pull-request';
 
+let botUsername: string | undefined;
+
+export function setBotUsername(name: string): void {
+  botUsername = name;
+}
+
 /**
  * Max comment size in Gerrit (16kiB by default)
  * https://gerrit-review.googlesource.com/Documentation/config-gerrit.html#change:~:text=change.commentSizeLimit
@@ -97,6 +103,7 @@ export function mapGerritChangeToPr(
     targetBranch: change.branch,
     title: change.subject,
     createdAt: convertGerritDateToISO(change.created),
+    hasApproval: hasCodeReviewApproval(change),
     labels: change.hashtags,
     reviewers:
       change.reviewers?.REVIEWER?.map((reviewer) => reviewer.username!) ?? [],
@@ -105,6 +112,17 @@ export function mapGerritChangeToPr(
     },
     sha: change.current_revision as LongCommitSha,
   };
+}
+
+function hasCodeReviewApproval(change: GerritChange): boolean {
+  const codeReview = change.labels?.['Code-Review'];
+  if (!codeReview?.approved) {
+    return false;
+  }
+  if (botUsername) {
+    return codeReview.approved.username === botUsername;
+  }
+  return true;
 }
 
 export function mapGerritChangeStateToPrState(

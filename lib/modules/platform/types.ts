@@ -77,6 +77,7 @@ export interface Pr {
   cannotMergeReason?: string; // for reflecting platform policies which may prevent merging
   createdAt?: string;
   closedAt?: string;
+  hasApproval?: boolean;
   hasAssignees?: boolean;
   labels?: string[];
   number: number;
@@ -126,6 +127,14 @@ export interface UpdatePrConfig {
   prBody?: string;
   state?: 'open' | 'closed';
   targetBranch?: string;
+
+  /**
+   * When true, the platform should approve/vote on this PR.
+   * Only set when autoApprove is configured AND the PR is not yet approved.
+   * Platforms that don't populate `Pr.hasApproval` won't receive this flag
+   * and should continue using `platformPrOptions.autoApprove` as a fallback.
+   */
+  needsApproval?: boolean;
 
   /**
    * This field allows for label management and is designed to

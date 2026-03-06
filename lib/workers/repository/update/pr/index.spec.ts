@@ -491,6 +491,54 @@ describe('workers/repository/update/pr/index', () => {
           'Pull Request #123 does not need updating',
         );
       });
+
+      it('updates PR when autoApprove is enabled and PR is not yet approved', async () => {
+        const unapprovedPr: Pr = {
+          ...pr,
+          hasApproval: false,
+        };
+        platform.getBranchPr.mockResolvedValueOnce(unapprovedPr);
+
+        expect(platform.updatePr).toHaveBeenCalledWith(
+          expect.objectContaining({ needsApproval: true }),
+        );
+        expect(platform.createPr).not.toHaveBeenCalled();
+        expect(prCache.setPrCache).toHaveBeenCalled();
+      });
+
+      it('skips PR update when autoApprove is enabled and PR is already approved', async () => {
+        const approvedPr: Pr = {
+          ...pr,
+          hasApproval: true,
+        };
+        platform.getBranchPr.mockResolvedValueOnce(approvedPr);
+
+        const res = await ensurePr({ ...config, autoApprove: true });
+
+        expect(res).toEqual({ type: 'with-pr', pr: approvedPr });
+        expect(platform.updatePr).not.toHaveBeenCalled();
+        expect(platform.createPr).not.toHaveBeenCalled();
+        expect(prCache.setPrCache).toHaveBeenCalled();
+
+        expect(logger.logger.debug).toHaveBeenCalledWith(
+          'Pull Request #123 does not need updating',
+        );
+      });
+
+      it('skips PR update when autoApprove is enabled but hasApproval is undefined', async () => {
+        platform.getBranchPr.mockResolvedValueOnce(pr);
+
+        const res = await ensurePr({ ...config, autoApprove: true });
+
+        expect(res).toEqual({ type: 'with-pr', pr });
+        expect(platform.updatePr).not.toHaveBeenCalled();
+        expect(platform.createPr).not.toHaveBeenCalled();
+        expect(prCache.setPrCache).toHaveBeenCalled();
+
+        expect(logger.logger.debug).toHaveBeenCalledWith(
+          'Pull Request #123 does not need updating',
+        );
+      });
     });
 
     describe('dry-run', () => {

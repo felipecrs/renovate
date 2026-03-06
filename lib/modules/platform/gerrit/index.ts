@@ -41,6 +41,7 @@ import {
   getGerritRepoUrl,
   mapBranchStatusToLabel,
   mapGerritChangeToPr,
+  setBotUsername,
 } from './utils.ts';
 
 export const id = 'gerrit';
@@ -149,6 +150,7 @@ export async function initRepo({
   const baseUrl = defaults.endpoint!;
   const url = getGerritRepoUrl(repository, baseUrl);
   configureScm(repository, config.gerritUsername!);
+  setBotUsername(config.gerritUsername!);
   await git.initRepo({ url, cloneSubmodules, cloneSubmodulesFilter });
 
   //abandon "open" and "rejected" changes at startup
@@ -213,6 +215,9 @@ export async function updatePr(prConfig: UpdatePrConfig): Promise<void> {
   }
   if (prConfig.targetBranch) {
     await client.moveChange(prConfig.number, prConfig.targetBranch);
+  }
+  if (prConfig.needsApproval) {
+    await client.setLabel(prConfig.number, 'Code-Review', 2);
   }
   if (prConfig.state && prConfig.state === 'closed') {
     await client.abandonChange(prConfig.number);
