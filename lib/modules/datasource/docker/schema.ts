@@ -38,6 +38,9 @@ const OciPlatform = z
  * https://github.com/opencontainers/image-spec/blob/main/config.md
  */
 export const OciImageConfig = z.object({
+  // The combined date and time at which the image was created.
+  // https://github.com/opencontainers/image-spec/blob/main/config.md
+  created: z.string().nullish(),
   // This is required by the spec, but probably not present in the wild.
   architecture: z.string().nullish(),
   config: z.object({ Labels: z.record(z.string()).nullish() }).nullish(),

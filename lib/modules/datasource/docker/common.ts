@@ -40,6 +40,12 @@ export const imageUrlLabel = 'org.opencontainers.image.url';
 export const sourceLabel = 'org.opencontainers.image.source';
 export const sourceLabels = [sourceLabel, 'org.label-schema.vcs-url'] as const;
 
+export const createdDateLabel = 'org.opencontainers.image.created';
+export const createdDateLabels = [
+  createdDateLabel,
+  'org.label-schema.build-date',
+] as const;
+
 export const gitRefLabel = 'org.opencontainers.image.revision';
 
 export const DOCKER_HUB = 'https://index.docker.io';

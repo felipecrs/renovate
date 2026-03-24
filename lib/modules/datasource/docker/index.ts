@@ -11,6 +11,7 @@ import type { HttpResponse } from '../../../util/http/types.ts';
 import { hasKey } from '../../../util/object.ts';
 import { type AsyncResult, Result } from '../../../util/result.ts';
 import { isDockerDigest } from '../../../util/string-match.ts';
+import type { Timestamp } from '../../../util/timestamp.ts';
 import { asTimestamp } from '../../../util/timestamp.ts';
 import {
   ensurePathPrefix,
@@ -28,6 +29,8 @@ import type {
 import { isArtifactoryServer } from '../util.ts';
 import {
   DOCKER_HUB,
+  createdDateLabel,
+  createdDateLabels,
   dockerDatasourceId,
   extractDigestFromResponseBody,
   findHelmSourceUrl,
@@ -85,7 +88,7 @@ export class DockerDatasource extends Datasource {
 
   override readonly releaseTimestampSupport = true;
   override readonly releaseTimestampNote =
-    'Only supported on Docker Hub: The release timestamp is determined from the `tag_last_pushed` field in the results. **NOTE**: Currently, digests will receive the same release timestamp as the `tag_last_pushed`, which means that digests may appear newer than they are - see https://github.com/renovatebot/renovate/issues/38659';
+    'For Docker Hub, the release timestamp is determined from the `tag_last_pushed` field. For other registries, the release timestamp is extracted from the OCI label `org.opencontainers.image.created`, the legacy label `org.label-schema.build-date`, or the image config `created` field, in that order of priority.';
   override readonly sourceUrlSupport = 'package';
   override readonly sourceUrlNote =
     'The source URL is determined from the `org.opencontainers.image.source` and `org.label-schema.vcs-url` labels present in the metadata of the **latest stable** image found on the Docker registry.';
@@ -560,6 +563,15 @@ export class DockerDatasource extends Datasource {
               `manifest blob response body missing the "config" property`,
             );
           }
+
+          // Synthesize creation date from config.created if no creation date label exists
+          if (
+            labels &&
+            body.created &&
+            !createdDateLabels.some((l) => labels?.[l])
+          ) {
+            labels[createdDateLabel] = body.created;
+          }
           break;
         }
       }
@@ -639,6 +651,99 @@ export class DockerDatasource extends Datasource {
         ttlMinutes: 24 * 60,
       },
       () => this._getLabels(registryHost, dockerRepository, tag),
+    );
+  }
+
+  /**
+   * Extracts the creation date from an image tag.
+   *
+   * Checks in order:
+   * 1. Manifest annotations for `org.opencontainers.image.created`
+   * 2. Manifest annotations for `org.label-schema.build-date`
+   * 3. Image config labels for `org.opencontainers.image.created`
+   * 4. Image config labels for `org.label-schema.build-date`
+   * 5. Image config `created` field (set by Docker at build time)
+   */
+  private async _getTagCreatedDate(
+    registryHost: string,
+    dockerRepository: string,
+    tag: string,
+  ): Promise<Timestamp | null> {
+    try {
+      const manifest = await this.getManifest(
+        registryHost,
+        dockerRepository,
+        tag,
+      );
+      if (!manifest) {
+        return null;
+      }
+
+      // Check manifest annotations (OCI manifests may have creation date annotations)
+      if ('annotations' in manifest && manifest.annotations) {
+        for (const label of createdDateLabels) {
+          const ts = asTimestamp(manifest.annotations[label]);
+          if (ts) {
+            return ts;
+          }
+        }
+      }
+
+      // Fetch config for standard image types
+      switch (manifest.config.mediaType) {
+        case 'application/vnd.oci.image.config.v1+json':
+        case 'application/vnd.docker.container.image.v1+json': {
+          const configResponse = await this.getImageConfig(
+            registryHost,
+            dockerRepository,
+            manifest.config.digest,
+          );
+          if (!configResponse) {
+            return null;
+          }
+
+          const { config: imageConfig, created } = configResponse.body;
+
+          // Check config labels
+          if (imageConfig?.Labels) {
+            for (const label of createdDateLabels) {
+              const ts = asTimestamp(imageConfig.Labels[label]);
+              if (ts) {
+                return ts;
+              }
+            }
+          }
+
+          // Fallback to config.created
+          return asTimestamp(created);
+        }
+        default:
+          return null;
+      }
+    } catch (err) {
+      if (err instanceof ExternalHostError) {
+        throw err;
+      }
+      logger.debug(
+        { err, registryHost, dockerRepository, tag },
+        'Failed to get tag creation date',
+      );
+      return null;
+    }
+  }
+
+  getTagCreatedDate(
+    registryHost: string,
+    dockerRepository: string,
+    tag: string,
+  ): Promise<Timestamp | null> {
+    return withCache(
+      {
+        namespace: 'datasource-docker-created-date',
+        key: `${registryHost}:${dockerRepository}:${tag}`,
+        ttlMinutes: 24 * 60,
+      },
+      () => this._getTagCreatedDate(registryHost, dockerRepository, tag),
     );
   }
 
@@ -1195,6 +1300,20 @@ export class DockerDatasource extends Datasource {
       }
       if (isNonEmptyString(labels[imageUrlLabel])) {
         ret.homepage = labels[imageUrlLabel];
+      }
+
+      // Extract creation date from labels for the latest tag
+      for (const label of createdDateLabels) {
+        if (isNonEmptyString(labels[label])) {
+          const latestRelease = releases.find((r) => r.version === latestTag);
+          if (latestRelease && !latestRelease.releaseTimestamp) {
+            const ts = asTimestamp(labels[label]);
+            if (ts) {
+              latestRelease.releaseTimestamp = ts;
+            }
+          }
+          break;
+        }
       }
     }
     return ret;

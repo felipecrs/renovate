@@ -41,6 +41,7 @@ export const packageCacheNamespaces = [
   'datasource-deb',
   'datasource-deno',
   'datasource-docker-architecture',
+  'datasource-docker-created-date',
   'datasource-docker-hub-cache',
   'datasource-docker-digest',
   'datasource-docker-hub-tags',

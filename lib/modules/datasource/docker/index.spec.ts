@@ -2483,6 +2483,136 @@ describe('modules/datasource/docker/index', () => {
       );
     });
 
+    it('extracts releaseTimestamp from OCI creation date label', async () => {
+      httpMock
+        .scope('https://registry.company.com/v2')
+        .get('/')
+        .times(2)
+        .reply(200)
+        .get('/node/tags/list?n=10000')
+        .reply(200)
+        .get('/node/tags/list?n=10000')
+        .reply(200, {
+          tags: ['1.0.0', '2.0.0'],
+        })
+        .get('/node/manifests/2.0.0')
+        .reply(200, {
+          schemaVersion: 2,
+          mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
+          config: {
+            digest: 'some-config-digest',
+            mediaType: 'application/vnd.docker.container.image.v1+json',
+          },
+        })
+        .get('/node/blobs/some-config-digest')
+        .reply(200, {
+          architecture: 'amd64',
+          config: {
+            Labels: {
+              'org.opencontainers.image.source':
+                'https://github.com/example/repo',
+              'org.opencontainers.image.created': '2024-06-15T10:30:00.000Z',
+            },
+          },
+        });
+      const res = await getPkgReleases({
+        datasource: DockerDatasource.id,
+        packageName: 'registry.company.com/node',
+      });
+      expect(res?.releases).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            version: '2.0.0',
+            releaseTimestamp: '2024-06-15T10:30:00.000Z',
+          }),
+        ]),
+      );
+      // Other releases should not have timestamps
+      const otherRelease = res?.releases.find((r) => r.version === '1.0.0');
+      expect(otherRelease?.releaseTimestamp).toBeUndefined();
+    });
+
+    it('extracts releaseTimestamp from legacy build-date label', async () => {
+      httpMock
+        .scope('https://registry.company.com/v2')
+        .get('/')
+        .times(2)
+        .reply(200)
+        .get('/node/tags/list?n=10000')
+        .reply(200)
+        .get('/node/tags/list?n=10000')
+        .reply(200, {
+          tags: ['1.0.0'],
+        })
+        .get('/node/manifests/1.0.0')
+        .reply(200, {
+          schemaVersion: 2,
+          mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
+          config: {
+            digest: 'some-config-digest',
+            mediaType: 'application/vnd.docker.container.image.v1+json',
+          },
+        })
+        .get('/node/blobs/some-config-digest')
+        .reply(200, {
+          architecture: 'amd64',
+          config: {
+            Labels: {
+              'org.label-schema.build-date': '2024-03-01T12:00:00.000Z',
+            },
+          },
+        });
+      const res = await getPkgReleases({
+        datasource: DockerDatasource.id,
+        packageName: 'registry.company.com/node',
+      });
+      expect(res?.releases).toEqual([
+        expect.objectContaining({
+          version: '1.0.0',
+          releaseTimestamp: '2024-03-01T12:00:00.000Z',
+        }),
+      ]);
+    });
+
+    it('extracts releaseTimestamp from config.created as fallback', async () => {
+      httpMock
+        .scope('https://registry.company.com/v2')
+        .get('/')
+        .times(2)
+        .reply(200)
+        .get('/node/tags/list?n=10000')
+        .reply(200)
+        .get('/node/tags/list?n=10000')
+        .reply(200, {
+          tags: ['1.0.0'],
+        })
+        .get('/node/manifests/1.0.0')
+        .reply(200, {
+          schemaVersion: 2,
+          mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
+          config: {
+            digest: 'some-config-digest',
+            mediaType: 'application/vnd.docker.container.image.v1+json',
+          },
+        })
+        .get('/node/blobs/some-config-digest')
+        .reply(200, {
+          created: '2024-06-15T10:30:00.000Z',
+          architecture: 'amd64',
+          config: {},
+        });
+      const res = await getPkgReleases({
+        datasource: DockerDatasource.id,
+        packageName: 'registry.company.com/node',
+      });
+      expect(res?.releases).toEqual([
+        expect.objectContaining({
+          version: '1.0.0',
+          releaseTimestamp: '2024-06-15T10:30:00.000Z',
+        }),
+      ]);
+    });
+
     it('supports manifest lists', async () => {
       httpMock
         .scope('https://registry.company.com/v2')
@@ -3040,6 +3170,282 @@ describe('modules/datasource/docker/index', () => {
             'ab7ddb5e3c5c3b402acd7c3679d4e415f8092dde',
         },
       );
+    });
+
+    it('synthesizes creation date from config.created when no creation date label exists', async () => {
+      httpMock
+        .scope('https://ghcr.io/v2')
+        .get('/')
+        .twice()
+        .reply(200)
+        .get('/node/manifests/1.0.0')
+        .reply(200, {
+          schemaVersion: 2,
+          mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
+          config: {
+            digest: 'some-config-digest',
+            mediaType: 'application/vnd.docker.container.image.v1+json',
+          },
+        })
+        .get('/node/blobs/some-config-digest')
+        .reply(200, {
+          created: '2024-06-15T10:30:00.000Z',
+          architecture: 'amd64',
+          config: {
+            Labels: {
+              'org.opencontainers.image.source':
+                'https://github.com/example/repo',
+            },
+          },
+        });
+
+      expect(await ds.getLabels('https://ghcr.io', 'node', '1.0.0')).toEqual({
+        'org.opencontainers.image.source': 'https://github.com/example/repo',
+        'org.opencontainers.image.created': '2024-06-15T10:30:00.000Z',
+      });
+    });
+
+    it('does not synthesize creation date when OCI label already exists', async () => {
+      httpMock
+        .scope('https://ghcr.io/v2')
+        .get('/')
+        .twice()
+        .reply(200)
+        .get('/node/manifests/1.0.0')
+        .reply(200, {
+          schemaVersion: 2,
+          mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
+          config: {
+            digest: 'some-config-digest',
+            mediaType: 'application/vnd.docker.container.image.v1+json',
+          },
+        })
+        .get('/node/blobs/some-config-digest')
+        .reply(200, {
+          created: '2024-01-01T00:00:00.000Z',
+          architecture: 'amd64',
+          config: {
+            Labels: {
+              'org.opencontainers.image.created': '2024-06-15T10:30:00.000Z',
+            },
+          },
+        });
+
+      const labels = await ds.getLabels('https://ghcr.io', 'node', '1.0.0');
+      expect(labels?.['org.opencontainers.image.created']).toBe(
+        '2024-06-15T10:30:00.000Z',
+      );
+    });
+
+    it('does not synthesize creation date when legacy label already exists', async () => {
+      httpMock
+        .scope('https://ghcr.io/v2')
+        .get('/')
+        .twice()
+        .reply(200)
+        .get('/node/manifests/1.0.0')
+        .reply(200, {
+          schemaVersion: 2,
+          mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
+          config: {
+            digest: 'some-config-digest',
+            mediaType: 'application/vnd.docker.container.image.v1+json',
+          },
+        })
+        .get('/node/blobs/some-config-digest')
+        .reply(200, {
+          created: '2024-01-01T00:00:00.000Z',
+          architecture: 'amd64',
+          config: {
+            Labels: {
+              'org.label-schema.build-date': '2024-06-15T10:30:00.000Z',
+            },
+          },
+        });
+
+      const labels = await ds.getLabels('https://ghcr.io', 'node', '1.0.0');
+      expect(labels?.['org.opencontainers.image.created']).toBeUndefined();
+      expect(labels?.['org.label-schema.build-date']).toBe(
+        '2024-06-15T10:30:00.000Z',
+      );
+    });
+  });
+
+  describe('getTagCreatedDate', () => {
+    const ds = new DockerDatasource();
+
+    it('returns date from manifest annotations', async () => {
+      httpMock
+        .scope('https://ghcr.io/v2')
+        .get('/')
+        .reply(200)
+        .get('/node/manifests/1.0.0')
+        .reply(200, {
+          schemaVersion: 2,
+          mediaType: 'application/vnd.oci.image.manifest.v1+json',
+          config: {
+            digest: 'some-config-digest',
+            mediaType: 'application/vnd.oci.image.config.v1+json',
+          },
+          annotations: {
+            'org.opencontainers.image.created': '2024-06-15T10:30:00.000Z',
+          },
+        });
+
+      expect(
+        await ds.getTagCreatedDate('https://ghcr.io', 'node', '1.0.0'),
+      ).toBe('2024-06-15T10:30:00.000Z');
+    });
+
+    it('returns date from legacy annotation', async () => {
+      httpMock
+        .scope('https://ghcr.io/v2')
+        .get('/')
+        .reply(200)
+        .get('/node/manifests/1.0.0')
+        .reply(200, {
+          schemaVersion: 2,
+          mediaType: 'application/vnd.oci.image.manifest.v1+json',
+          config: {
+            digest: 'some-config-digest',
+            mediaType: 'application/vnd.oci.image.config.v1+json',
+          },
+          annotations: {
+            'org.label-schema.build-date': '2024-06-15T10:30:00.000Z',
+          },
+        });
+
+      expect(
+        await ds.getTagCreatedDate('https://ghcr.io', 'node', '1.0.0'),
+      ).toBe('2024-06-15T10:30:00.000Z');
+    });
+
+    it('returns date from config labels', async () => {
+      httpMock
+        .scope('https://ghcr.io/v2')
+        .get('/')
+        .twice()
+        .reply(200)
+        .get('/node/manifests/1.0.0')
+        .reply(200, {
+          schemaVersion: 2,
+          mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
+          config: {
+            digest: 'some-config-digest',
+            mediaType: 'application/vnd.docker.container.image.v1+json',
+          },
+        })
+        .get('/node/blobs/some-config-digest')
+        .reply(200, {
+          architecture: 'amd64',
+          config: {
+            Labels: {
+              'org.opencontainers.image.created': '2024-06-15T10:30:00.000Z',
+            },
+          },
+        });
+
+      expect(
+        await ds.getTagCreatedDate('https://ghcr.io', 'node', '1.0.0'),
+      ).toBe('2024-06-15T10:30:00.000Z');
+    });
+
+    it('returns date from config.created as fallback', async () => {
+      httpMock
+        .scope('https://ghcr.io/v2')
+        .get('/')
+        .twice()
+        .reply(200)
+        .get('/node/manifests/1.0.0')
+        .reply(200, {
+          schemaVersion: 2,
+          mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
+          config: {
+            digest: 'some-config-digest',
+            mediaType: 'application/vnd.docker.container.image.v1+json',
+          },
+        })
+        .get('/node/blobs/some-config-digest')
+        .reply(200, {
+          created: '2024-06-15T10:30:00.000Z',
+          architecture: 'amd64',
+          config: {},
+        });
+
+      expect(
+        await ds.getTagCreatedDate('https://ghcr.io', 'node', '1.0.0'),
+      ).toBe('2024-06-15T10:30:00.000Z');
+    });
+
+    it('prefers OCI label over legacy label and config.created', async () => {
+      httpMock
+        .scope('https://ghcr.io/v2')
+        .get('/')
+        .twice()
+        .reply(200)
+        .get('/node/manifests/1.0.0')
+        .reply(200, {
+          schemaVersion: 2,
+          mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
+          config: {
+            digest: 'some-config-digest',
+            mediaType: 'application/vnd.docker.container.image.v1+json',
+          },
+        })
+        .get('/node/blobs/some-config-digest')
+        .reply(200, {
+          created: '2024-01-01T00:00:00.000Z',
+          architecture: 'amd64',
+          config: {
+            Labels: {
+              'org.opencontainers.image.created': '2024-06-15T10:30:00.000Z',
+              'org.label-schema.build-date': '2024-03-01T00:00:00.000Z',
+            },
+          },
+        });
+
+      expect(
+        await ds.getTagCreatedDate('https://ghcr.io', 'node', '1.0.0'),
+      ).toBe('2024-06-15T10:30:00.000Z');
+    });
+
+    it('returns null when no date is available', async () => {
+      httpMock
+        .scope('https://ghcr.io/v2')
+        .get('/')
+        .twice()
+        .reply(200)
+        .get('/node/manifests/1.0.0')
+        .reply(200, {
+          schemaVersion: 2,
+          mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
+          config: {
+            digest: 'some-config-digest',
+            mediaType: 'application/vnd.docker.container.image.v1+json',
+          },
+        })
+        .get('/node/blobs/some-config-digest')
+        .reply(200, {
+          architecture: 'amd64',
+          config: {},
+        });
+
+      expect(
+        await ds.getTagCreatedDate('https://ghcr.io', 'node', '1.0.0'),
+      ).toBeNull();
+    });
+
+    it('returns null when manifest is not found', async () => {
+      httpMock
+        .scope('https://ghcr.io/v2')
+        .get('/')
+        .reply(200)
+        .get('/node/manifests/1.0.0')
+        .reply(200);
+
+      expect(
+        await ds.getTagCreatedDate('https://ghcr.io', 'node', '1.0.0'),
+      ).toBeNull();
     });
   });
 });
