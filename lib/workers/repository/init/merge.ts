@@ -42,7 +42,7 @@ import {
   OnboardingState,
   getDefaultConfigFileName,
 } from '../onboarding/common.ts';
-import type { RepoFileConfig } from './types.ts';
+import type { RepoFileConfig, RepositoryWorkerConfig } from './types.ts';
 
 export async function detectConfigFile(): Promise<string | null> {
   const fileList = await scm.getFileList();
@@ -184,10 +184,10 @@ export function checkForRepoConfigError(repoConfig: RepoFileConfig): void {
 
 // Check for repository config
 export async function mergeRenovateConfig(
-  config: RenovateConfig,
+  config: RepositoryWorkerConfig,
   branchName?: string,
 ): Promise<RenovateConfig> {
-  let returnConfig = { ...config };
+  let returnConfig: RepositoryWorkerConfig = { ...config };
   let repoConfig: RepoFileConfig = {};
   if (config.requireConfig !== 'ignored') {
     repoConfig = await detectRepoFileConfig(branchName);
@@ -207,6 +207,43 @@ export async function mergeRenovateConfig(
     configFileParsed,
     process.env.RENOVATE_X_STATIC_REPO_CONFIG_FILE,
   );
+
+  // Apply the repositories[] object-entry config between global config and
+  // repository file config.
+  // Must run after repository file config is loaded so its `ignorePresets` can
+  // be included when resolving object-entry presets.
+  const repoEntryConfig = returnConfig.repositoryEntryConfig;
+  delete returnConfig.repositoryEntryConfig;
+
+  if (isNonEmptyObject(repoEntryConfig)) {
+    const repoEntry = repoEntryConfig as RenovateConfig;
+    const toResolve: RenovateConfig = {
+      ...repoEntry,
+      extends: [...(returnConfig.extends ?? []), ...(repoEntry.extends ?? [])],
+      ignorePresets: [
+        ...(returnConfig.ignorePresets ?? []),
+        ...(repoEntry.ignorePresets ?? []),
+        ...(resolvedRepoConfig.ignorePresets ?? []),
+      ],
+    };
+    delete returnConfig.extends;
+
+    const { config: resolvedRepoEntry } = await presets.resolveConfigPresets(
+      toResolve,
+      config,
+    );
+
+    applyNpmrc(resolvedRepoEntry, 'resolvedRepoEntry');
+
+    const resolvedRepoEntryWithSecrets = applySecretsAndVariablesToConfig({
+      config: resolvedRepoEntry,
+      secrets: config.secrets,
+      variables: config.variables,
+    });
+
+    applyHostRules(resolvedRepoEntryWithSecrets);
+    returnConfig = mergeChildConfig(returnConfig, resolvedRepoEntryWithSecrets);
+  }
 
   if (isNonEmptyArray(returnConfig.extends)) {
     resolvedRepoConfig.extends = [
@@ -295,7 +332,7 @@ export async function mergeRenovateConfig(
 
 export function applyNpmrc(
   config: RenovateConfig,
-  configType?: 'resolved' | 'decrypted',
+  configType?: 'resolved' | 'resolvedRepoEntry' | 'decrypted',
 ): void {
   setNpmTokenInNpmrc(config);
   if (!isString(config.npmrc)) {
