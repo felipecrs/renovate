@@ -452,6 +452,19 @@ describe('modules/platform/gerrit/client', () => {
     });
   });
 
+  describe('restoreChange()', () => {
+    it('restore', async () => {
+      const change = partial<GerritChange>({});
+      httpMock
+        .scope(gerritEndpointUrl)
+        .post('/a/changes/123456/restore', {
+          notify: 'OWNER_REVIEWERS',
+        })
+        .reply(200, gerritRestResponse(change), jsonResultHeader);
+      await expect(client.restoreChange(123456)).resolves.toEqual(change);
+    });
+  });
+
   describe('moveChange()', () => {
     it('move change to different branch', async () => {
       const change = partial<GerritChange>({ branch: 'new-main' });

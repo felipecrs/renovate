@@ -110,6 +110,7 @@ export interface GerritRevisionInfo {
 
 export interface GerritChangeMessageInfo {
   id: string;
+  date: string;
   message: string;
   tag?: string;
 }

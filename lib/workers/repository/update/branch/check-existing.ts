@@ -39,6 +39,11 @@ export async function prAlreadyExisted(
     }
   }
 
+  if (pr?.title?.endsWith(' - autoclosed')) {
+    logger.debug(`Skipping autoclosed PR #${pr.number}`);
+    return null;
+  }
+
   if (pr) {
     logger.debug('Found closed PR with current title');
     const prDetails = await platform.getPr(pr.number);

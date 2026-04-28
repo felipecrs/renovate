@@ -390,7 +390,7 @@ describe('modules/platform/gerrit/index', () => {
       gerrit.writeToConfig({ labels: {} });
     });
 
-    it('updatePr() - closed => abandon the change', async () => {
+    it('updatePr() - closed => abandon the change with autoclosed hashtag', async () => {
       const change = makeChange();
       const pr = mapGerritChangeToPr(change)!;
       prCacheMock.getPrs.mockResolvedValueOnce([pr]);
@@ -402,8 +402,11 @@ describe('modules/platform/gerrit/index', () => {
       );
       await gerrit.updatePr({
         number: 123456,
-        prTitle: change.subject,
+        prTitle: change.subject + ' - autoclosed',
         state: 'closed',
+      });
+      expect(clientMock.setHashtags).toHaveBeenCalledWith(123456, {
+        add: ['autoclosed'],
       });
       expect(clientMock.abandonChange).toHaveBeenCalledExactlyOnceWith(123456);
       expect(prCacheMock.setPr).toHaveBeenCalledExactlyOnceWith(
@@ -411,8 +414,46 @@ describe('modules/platform/gerrit/index', () => {
         expect.objectContaining({
           number: 123456,
           state: 'closed',
+          title: change.subject + ' - autoclosed',
+          labels: expect.arrayContaining(['autoclosed']),
+          closedAt: '2025-04-14T16:45:00.000000000',
           updatedAt: '2025-04-14T16:45:00.000000000',
         }),
+      );
+    });
+
+    it('updatePr() - closed without autoclosed suffix => abandon without autoclosed hashtag', async () => {
+      const change = makeChange({ subject: 'Update dependency X' });
+      const pr = mapGerritChangeToPr(change)!;
+      prCacheMock.getPrs.mockResolvedValueOnce([pr]);
+      prCacheMock.setPr.mockResolvedValueOnce();
+      clientMock.abandonChange.mockResolvedValueOnce(
+        partial<GerritChange>({
+          updated: '2025-04-14 16:45:00.000000000',
+        }),
+      );
+      await gerrit.updatePr({
+        number: 123456,
+        prTitle: 'Update dependency X',
+        state: 'closed',
+      });
+      expect(clientMock.setHashtags).toHaveBeenCalledExactlyOnceWith(123456, {
+        add: undefined,
+        remove: undefined,
+      });
+      expect(clientMock.abandonChange).toHaveBeenCalledExactlyOnceWith(123456);
+      expect(prCacheMock.setPr).toHaveBeenCalledExactlyOnceWith(
+        'test/repo',
+        expect.objectContaining({
+          number: 123456,
+          state: 'closed',
+          title: 'Update dependency X',
+          closedAt: '2025-04-14T16:45:00.000000000',
+          updatedAt: '2025-04-14T16:45:00.000000000',
+        }),
+      );
+      expect(prCacheMock.setPr.mock.calls[0][1].labels).not.toEqual(
+        expect.arrayContaining(['autoclosed']),
       );
     });
 
@@ -682,6 +723,74 @@ describe('modules/platform/gerrit/index', () => {
       const pr = mapGerritChangeToPr(makeChange())!;
       prCacheMock.getPrs.mockResolvedValueOnce([pr, pr, pr]);
       await expect(gerrit.getPrList()).resolves.toHaveLength(3);
+    });
+  });
+
+  describe('tryReuseAutoclosedPr()', () => {
+    it('restores an abandoned change, removes autoclosed hashtag, and updates cache', async () => {
+      const restoredChange = makeChange({
+        status: 'NEW',
+        updated: '2025-04-14 17:00:00.000000000',
+      });
+      clientMock.restoreChange.mockResolvedValueOnce(partial<GerritChange>({}));
+      clientMock.getChange.mockResolvedValueOnce(restoredChange);
+      prCacheMock.setPr.mockResolvedValueOnce();
+
+      const pr = await gerrit.tryReuseAutoclosedPr(
+        {
+          number: 123456,
+          title: 'old title - autoclosed',
+          state: 'closed',
+          closedAt: '2025-04-14T16:45:00.000000000',
+          sourceBranch: 'branch',
+        },
+        'new title',
+      );
+
+      expect(pr).toMatchObject({
+        number: 123456,
+        state: 'open',
+        sourceBranch: 'branch',
+      });
+      expect(clientMock.restoreChange).toHaveBeenCalledExactlyOnceWith(123456);
+      expect(clientMock.setHashtags).toHaveBeenCalledWith(123456, {
+        remove: ['autoclosed'],
+      });
+      expect(clientMock.getChange).toHaveBeenCalledExactlyOnceWith(123456, [
+        'MESSAGES',
+        'LABELS',
+        'DETAILED_ACCOUNTS',
+        'CURRENT_REVISION',
+        'COMMIT_FOOTERS',
+      ]);
+      expect(prCacheMock.setPr).toHaveBeenCalledExactlyOnceWith(
+        'test/repo',
+        expect.objectContaining({
+          number: 123456,
+          state: 'open',
+        }),
+      );
+    });
+
+    it('returns null if restoring fails', async () => {
+      clientMock.restoreChange.mockRejectedValueOnce(
+        new Error('change is not abandoned'),
+      );
+
+      const pr = await gerrit.tryReuseAutoclosedPr(
+        {
+          number: 123456,
+          title: 'old title - autoclosed',
+          state: 'closed',
+          closedAt: '2025-04-14T16:45:00.000000000',
+          sourceBranch: 'branch',
+        },
+        'new title',
+      );
+
+      expect(pr).toBeNull();
+      expect(clientMock.restoreChange).toHaveBeenCalledExactlyOnceWith(123456);
+      expect(clientMock.getChange).not.toHaveBeenCalled();
     });
   });
 

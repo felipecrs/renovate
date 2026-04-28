@@ -42,6 +42,18 @@ describe('workers/repository/update/branch/check-existing', () => {
       expect(platform.findPr).toHaveBeenCalledTimes(1);
     });
 
+    it('skips autoclosed PRs', async () => {
+      platform.findPr.mockResolvedValueOnce(
+        partial<Pr>({
+          number: 12,
+          title: 'some-title - autoclosed',
+        }),
+      );
+      expect(await prAlreadyExisted(config)).toBeNull();
+      expect(platform.findPr).toHaveBeenCalledTimes(1);
+      expect(platform.getPr).not.toHaveBeenCalled();
+    });
+
     it('returns true if second check hits', async () => {
       config.branchPrefixOld = 'deps/';
       platform.findPr.mockResolvedValueOnce(null);

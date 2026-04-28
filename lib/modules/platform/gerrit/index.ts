@@ -2,6 +2,7 @@ import { isNonEmptyArray, isUndefined } from '@sindresorhus/is';
 import semver from 'semver';
 import { logger } from '../../../logger/index.ts';
 import type { BranchStatus } from '../../../types/index.ts';
+import { coerceArray } from '../../../util/array.ts';
 import { clone } from '../../../util/clone.ts';
 import { parseJson } from '../../../util/common.ts';
 import { getEnv } from '../../../util/env.ts';
@@ -299,8 +300,17 @@ export async function updatePr(prConfig: UpdatePrConfig): Promise<void> {
   }
   // TODO: support restoring change if prConfig.state === 'open'
   if (prConfig.state === 'closed') {
+    const isAutoclosed = prConfig.prTitle.endsWith(' - autoclosed');
+    if (isAutoclosed) {
+      await client.setHashtags(prConfig.number, { add: ['autoclosed'] });
+    }
     const change = await client.abandonChange(prConfig.number);
     pr.state = 'closed';
+    pr.title = prConfig.prTitle;
+    if (isAutoclosed) {
+      pr.labels = [...coerceArray(pr.labels), 'autoclosed'];
+    }
+    pr.closedAt = convertGerritDateToISO(change.updated);
     pr.updatedAt = convertGerritDateToISO(change.updated);
     updated = true;
   }
@@ -400,6 +410,28 @@ export async function getPrList(): Promise<Pr[]> {
   const cached = await GerritPrCache.getPrs(config.repository!);
   logger.debug(`getPrList: using ${cached.length} cached changes`);
   return cached;
+}
+
+export async function tryReuseAutoclosedPr(
+  autoclosedPr: Pr,
+  newTitle: string,
+): Promise<Pr | null> {
+  const { number, sourceBranch: branchName } = autoclosedPr;
+  try {
+    await client.restoreChange(number);
+    await client.setHashtags(number, { remove: ['autoclosed'] });
+    logger.info(
+      { branchName, oldTitle: autoclosedPr.title, newTitle, number },
+      'Successfully restored autoclosed Gerrit change',
+    );
+    const change = await client.getChange(number, REQUEST_DETAILS_FOR_PRS);
+    const pr = mapGerritChangeToPr(change, { sourceBranch: branchName })!;
+    await GerritPrCache.setPr(config.repository!, pr);
+    return pr;
+  } catch (err) {
+    logger.debug({ err }, 'Could not restore autoclosed Gerrit change');
+    return null;
+  }
 }
 
 export async function mergePr(mergeConfig: MergePRConfig): Promise<boolean> {

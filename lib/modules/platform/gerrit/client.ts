@@ -192,6 +192,18 @@ class GerritClient {
     return change.body;
   }
 
+  async restoreChange(changeNumber: number): Promise<GerritChange> {
+    const change = await this.gerritHttp.postJson<GerritChange>(
+      `a/changes/${changeNumber}/restore`,
+      {
+        body: {
+          notify: 'OWNER_REVIEWERS',
+        },
+      },
+    );
+    return change.body;
+  }
+
   async submitChange(changeNumber: number): Promise<GerritChange> {
     const change = await this.gerritHttp.postJson<GerritChange>(
       `a/changes/${changeNumber}/submit`,
