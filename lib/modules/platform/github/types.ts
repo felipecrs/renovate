@@ -95,6 +95,7 @@ export interface PlatformConfig {
   existingRepos?: string[];
   userDetails?: UserDetails;
   userEmail?: EmailAddress | null;
+  gitCommitterEmail?: string;
 }
 
 export interface LocalRepoConfig {

@@ -1,5 +1,8 @@
 import type { DateTime } from 'luxon';
-import type { MergeStrategy } from '../../config/types.ts';
+import type {
+  MergeStrategy,
+  PlatformCommitOptions,
+} from '../../config/types.ts';
 import type { BranchStatus, HostRule } from '../../types/index.ts';
 import type { CommitFilesConfig, LongCommitSha } from '../../util/git/types.ts';
 import type { GithubVulnerabilityAlert } from './github/schema.ts';
@@ -18,6 +21,7 @@ export interface PlatformResult {
   renovateUsername?: string;
   token?: string;
   gitAuthor?: string;
+  gitCommitterEmail?: string;
   /*
    * return these only if _additional_ rules/hosts are required
    */
@@ -330,4 +334,7 @@ export interface PlatformScm {
   mergeToLocal(branchName: string): Promise<void>;
   mergeAndPush(branchName: string): Promise<void>;
   syncForkWithUpstream?(baseBranch: string): Promise<void>;
+  getCommitterEmailForPlatformCommit?(
+    platformCommit: PlatformCommitOptions,
+  ): string | undefined;
 }

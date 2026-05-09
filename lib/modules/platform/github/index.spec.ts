@@ -111,6 +111,7 @@ describe('modules/platform/github/index', () => {
       ).toEqual({
         endpoint: 'https://ghe.renovatebot.com/',
         gitAuthor: 'undefined <user@domain.com>',
+        gitCommitterEmail: 'noreply@ghe.renovatebot.com',
         renovateUsername: 'renovate-bot',
         token: 'github_pat_XXXXXX',
       });
@@ -366,6 +367,7 @@ describe('modules/platform/github/index', () => {
       ).toEqual({
         endpoint: 'https://api.github.com/',
         gitAuthor: 'my-app[bot] <12345+my-app[bot]@users.noreply.github.com>',
+        gitCommitterEmail: 'noreply@github.com',
         hostRules: [
           {
             hostType: 'docker',
@@ -403,6 +405,7 @@ describe('modules/platform/github/index', () => {
       expect(await github.initPlatform({ token: 'ghs_123test' })).toEqual({
         endpoint: 'https://api.github.com/',
         gitAuthor: 'my-app[bot] <12345+my-app[bot]@users.noreply.github.com>',
+        gitCommitterEmail: 'noreply@github.com',
         hostRules: [
           {
             hostType: 'docker',
@@ -468,6 +471,7 @@ describe('modules/platform/github/index', () => {
         endpoint: 'https://ghe.renovatebot.com/',
         gitAuthor:
           'my-app[bot] <12345+my-app[bot]@users.noreply.ghe.renovatebot.com>',
+        gitCommitterEmail: 'noreply@ghe.renovatebot.com',
         renovateUsername: 'my-app[bot]',
         token: 'x-access-token:ghs_123test',
       });
@@ -494,6 +498,7 @@ describe('modules/platform/github/index', () => {
       ).toEqual({
         endpoint: 'https://octocorp.ghe.com/',
         gitAuthor: 'my-app[bot] <12345+my-app[bot]@users.noreply.ghe.com>',
+        gitCommitterEmail: 'noreply@ghe.com',
         renovateUsername: 'my-app[bot]',
         token: 'x-access-token:ghs_123test',
       });

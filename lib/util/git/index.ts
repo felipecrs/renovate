@@ -177,6 +177,12 @@ let submodulesInitizialized: boolean;
 
 let privateKeySet = false;
 
+let gitCommitterEmail: string | undefined;
+
+export function setGitCommitterEmail(email: string | undefined): void {
+  gitCommitterEmail = email;
+}
+
 export const GIT_MINIMUM_VERSION = '2.33.0'; // git show-current
 
 export async function validateGitVersion(): Promise<boolean> {
@@ -862,6 +868,10 @@ export async function isBranchModified(
     includedAuthors.delete(ignoredAuthor);
   }
 
+  if (gitCommitterEmail) {
+    includedAuthors.delete(gitCommitterEmail);
+  }
+
   if (includedAuthors.size === 0) {
     // authors all match - branch has not been modified
     logger.trace(
@@ -872,6 +882,7 @@ export async function isBranchModified(
         includedAuthors: [...includedAuthors],
         gitAuthorEmail,
         ignoredAuthors,
+        gitCommitterEmail,
       },
       'branch.isModified() = false',
     );
@@ -888,6 +899,7 @@ export async function isBranchModified(
       includedAuthors: [...includedAuthors],
       gitAuthorEmail,
       ignoredAuthors,
+      gitCommitterEmail,
     },
     'branch.isModified() = true',
   );

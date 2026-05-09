@@ -196,18 +196,19 @@ export async function initPlatform({
     );
     renovateUsername = platformConfig.userDetails.username;
   }
+  let ghHostname: string;
+  if (platformConfig.isGheCloud) {
+    ghHostname = 'ghe.com';
+  } else if (platformConfig.isGhe) {
+    ghHostname = new URL(platformConfig.endpoint).hostname;
+  } else {
+    ghHostname = 'github.com';
+  }
+
   let discoveredGitAuthor: string | undefined;
   if (!gitAuthor) {
     if (platformConfig.isGHApp) {
       platformConfig.userDetails ??= await getAppDetails(token);
-      let ghHostname: string;
-      if (platformConfig.isGheCloud) {
-        ghHostname = 'ghe.com';
-      } else if (platformConfig.isGhe) {
-        ghHostname = new URL(platformConfig.endpoint).hostname;
-      } else {
-        ghHostname = 'github.com';
-      }
       discoveredGitAuthor = `${platformConfig.userDetails.name} <${platformConfig.userDetails.id}+${platformConfig.userDetails.username}@users.noreply.${ghHostname}>`;
     } else {
       platformConfig.userDetails ??= await getUserDetails(
@@ -225,9 +226,12 @@ export async function initPlatform({
     }
   }
   logger.debug({ platformConfig, renovateUsername }, 'Platform config');
+  platformConfig.gitCommitterEmail = `noreply@${ghHostname}`;
+
   const platformResult: PlatformResult = {
     endpoint: platformConfig.endpoint,
     gitAuthor: gitAuthor ?? discoveredGitAuthor,
+    gitCommitterEmail: platformConfig.gitCommitterEmail,
     renovateUsername,
     token,
   };

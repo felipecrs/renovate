@@ -4,9 +4,14 @@ import type { RenovateConfig } from '../../../config/types.ts';
 import { logger } from '../../../logger/index.ts';
 import { setRepositoryLogLevelRemaps } from '../../../logger/remap.ts';
 import { platform } from '../../../modules/platform/index.ts';
+import { scm } from '../../../modules/platform/scm.ts';
 import * as memCache from '../../../util/cache/memory/index.ts';
 import { clone } from '../../../util/clone.ts';
-import { cloneSubmodules, setUserRepoConfig } from '../../../util/git/index.ts';
+import {
+  cloneSubmodules,
+  setGitCommitterEmail,
+  setUserRepoConfig,
+} from '../../../util/git/index.ts';
 import { getAll } from '../../../util/host-rules.ts';
 import { initMutexes } from '../../../util/mutex.ts';
 import { checkIfConfigured } from '../configured.ts';
@@ -70,6 +75,9 @@ export async function initRepo(
     config,
   });
   setUserRepoConfig(config);
+  setGitCommitterEmail(
+    scm.getCommitterEmailForPlatformCommit?.(config.platformCommit ?? 'auto'),
+  );
   config = await detectVulnerabilityAlerts(config);
   // istanbul ignore if
   if (config.printConfig) {

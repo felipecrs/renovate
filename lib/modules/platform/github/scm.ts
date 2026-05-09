@@ -1,10 +1,11 @@
+import type { PlatformCommitOptions } from '../../../config/types.ts';
 import * as git from '../../../util/git/index.ts';
 import type {
   CommitFilesConfig,
   LongCommitSha,
 } from '../../../util/git/types.ts';
 import { DefaultGitScm } from '../default-scm.ts';
-import { commitFiles, isGHApp } from './index.ts';
+import { commitFiles, isGHApp, platformConfig } from './index.ts';
 
 export class GithubScm extends DefaultGitScm {
   override commitAndPush(
@@ -18,5 +19,13 @@ export class GithubScm extends DefaultGitScm {
     return platformCommit === 'enabled'
       ? commitFiles(commitConfig)
       : git.commitFiles(commitConfig);
+  }
+
+  override getCommitterEmailForPlatformCommit(
+    platformCommit: PlatformCommitOptions,
+  ): string | undefined {
+    const isEnabled =
+      platformCommit === 'enabled' || (platformCommit === 'auto' && isGHApp());
+    return isEnabled ? platformConfig.gitCommitterEmail : undefined;
   }
 }
