@@ -186,12 +186,9 @@ export function migrateConfig(
       }
     }
     if (
-      // @ts-expect-error -- TODO: fix me
       isNonEmptyObject(migratedConfig['pip-compile']) &&
-      // @ts-expect-error -- TODO: fix me
-      isNonEmptyArray(migratedConfig['pip-compile'].managerFilePatterns)
+      isNonEmptyArray(migratedConfig['pip-compile']?.managerFilePatterns)
     ) {
-      // @ts-expect-error -- TODO: fix me
       migratedConfig['pip-compile'].managerFilePatterns = migratedConfig[
         'pip-compile'
       ].managerFilePatterns.map((filePattern) => {

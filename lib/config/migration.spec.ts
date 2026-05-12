@@ -695,9 +695,9 @@ describe('config/migration', () => {
 
   it('migrates pip-compile', () => {
     const config: RenovateConfig = {
-      // @ts-expect-error -- TODO: fix me
       'pip-compile': {
         enabled: true,
+        // @ts-expect-error -- fileMatch is a deprecated/migrated property not on the current type
         fileMatch: [
           '(^|/)requirements\\.in$',
           '(^|/)requirements-fmt\\.in$',

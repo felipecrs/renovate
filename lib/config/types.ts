@@ -357,13 +357,14 @@ export interface RenovateInternalConfig {
   vulnerabilityAlertsOnly?: boolean;
 }
 
-// TODO: Proper typings
 /**
- * Configuration that could be used either top-level in a repository config (or Global, Inherited or Shareable Preset configuration).
+ * Configuration that could be used either top-level in a repository config (or Global, Inherited or Shareable Preset configuration),
+ * but without manager-specific override keys.
  *
- * This is a superset of any configuration that a Renovate user (not self-hosted administrator) can set.
+ * This is the base for `RenovateConfig` and also the type allowed inside manager-specific
+ * override blocks (e.g., `"npm": { ... }`), preventing infinite nesting of manager keys.
  */
-export interface RenovateConfig
+export interface ManagerOverrideConfig
   extends
     LegacyAdminConfig,
     RenovateSharedConfig,
@@ -484,6 +485,17 @@ export interface RenovateConfig
   minimumReleaseAgeBehaviour?: MinimumReleaseAgeBehaviour;
   toolSettings?: ToolSettingsOptions;
 }
+
+/**
+ * Configuration that could be used either top-level in a repository config (or Global, Inherited or Shareable Preset configuration).
+ *
+ * This is a superset of any configuration that a Renovate user (not self-hosted administrator) can set.
+ * Extends `ManagerOverrideConfig` with manager-specific override keys.
+ */
+export interface RenovateConfig
+  extends
+    ManagerOverrideConfig,
+    Partial<Record<ManagerName, ManagerOverrideConfig>> {}
 
 const CustomDatasourceFormats = [
   'html',

@@ -577,7 +577,6 @@ describe('config/validation', () => {
       };
       const { warnings, errors } = await configValidation.validateConfig(
         'repo',
-        // @ts-expect-error -- TODO: managers, datasources and versionings are not defined on RenovateConfig
         config,
       );
       expect(warnings).toHaveLength(4);
@@ -616,7 +615,6 @@ describe('config/validation', () => {
       };
       const { warnings, errors } = await configValidation.validateConfig(
         'repo',
-        // @ts-expect-error -- TODO: managers, datasources and versionings are not defined on RenovateConfig
         config,
       );
       expect(warnings).toHaveLength(0);
@@ -1352,7 +1350,6 @@ describe('config/validation', () => {
     it('errors if managerFilePatterns has wrong parent', async () => {
       const config: RenovateConfig = {
         managerFilePatterns: ['foo'],
-        // @ts-expect-error: -- TODO: managers, datasources and versionings are not defined on RenovateConfig
         npm: {
           managerFilePatterns: ['package\\.json'],
           minor: {

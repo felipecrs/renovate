@@ -1,4 +1,5 @@
 import { logger, scm } from '~test/util.ts';
+import type { RenovateConfig } from '../../../config/types.ts';
 import type { PackageFile } from '../../../modules/manager/types.ts';
 import * as _repositoryCache from '../../../util/cache/repository/index.ts';
 import type { BaseBranchCache } from '../../../util/cache/repository/types.ts';
@@ -78,16 +79,13 @@ describe('workers/repository/process/extract-update', () => {
     });
 
     it('runs with baseBranchPatterns', async () => {
-      const config = {
+      const config: RenovateConfig = {
         baseBranchPatterns: ['master', 'dev'],
         baseBranches: ['master', 'dev'],
         repoIsOnboarded: true,
         enabledManagers: ['npm'],
-        javascript: {
-          labels: ['js'],
-        },
         npm: {
-          addLabels: 'npm',
+          addLabels: ['npm'],
         },
       };
       scm.checkoutBranch.mockResolvedValueOnce('123test' as LongCommitSha);
