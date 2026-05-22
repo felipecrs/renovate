@@ -58,7 +58,7 @@ export function extractPackageFile(
   const deps = pipelineKeys.flatMap((pipelineKey) =>
     Object.values(config[pipelineKey] ?? {})
       .filter((step) => isString(step?.image))
-      .map((step) => getDep(step.image, true, extractConfig.registryAliases)),
+      .map((step) => getDep(step.image, true)),
   );
 
   logger.trace({ deps }, 'Woodpecker Configuration image');

@@ -32,12 +32,12 @@ describe('modules/manager/circleci/extract', () => {
         deps: [
           {
             autoReplaceStringTemplate:
-              'quay.io/myName/myPackage:{{#if newValue}}{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}',
+              '{{depName}}{{#if newValue}}:{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}',
             currentDigest: undefined,
             currentValue: '0.6.2',
             datasource: 'docker',
             depName: 'quay.io/myName/myPackage',
-            packageName: 'my-quay-mirror.registry.com/myName/myPackage',
+            packageName: 'quay.io/myName/myPackage',
             depType: 'docker',
             replaceString: 'quay.io/myName/myPackage:0.6.2',
           },

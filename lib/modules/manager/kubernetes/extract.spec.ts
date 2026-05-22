@@ -140,12 +140,12 @@ kind: ConfigMap
         deps: [
           {
             autoReplaceStringTemplate:
-              'quay.io/node:{{#if newValue}}{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}',
+              '{{depName}}{{#if newValue}}:{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}',
             currentDigest: undefined,
             currentValue: '0.0.1',
             datasource: 'docker',
             depName: 'quay.io/node',
-            packageName: 'my-quay-mirror.registry.com/node',
+            packageName: 'quay.io/node',
             replaceString: 'quay.io/node:0.0.1',
           },
         ],
@@ -185,12 +185,12 @@ kind: ConfigMap
         deps: [
           {
             autoReplaceStringTemplate:
-              'quay.io/node:{{#if newValue}}{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}',
+              '{{depName}}{{#if newValue}}:{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}',
             currentDigest: undefined,
             currentValue: '0.0.1',
             datasource: 'docker',
             depName: 'quay.io/node',
-            packageName: 'my-quay-mirror.registry.com/node',
+            packageName: 'quay.io/node',
             replaceString: 'quay.io/node:0.0.1',
           },
         ],

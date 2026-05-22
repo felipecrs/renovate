@@ -11,10 +11,7 @@ const depProxyRe = regEx(
  * @param imageName as used in .gitlab-ci.yml file
  * @return package dependency for the image
  */
-export function getGitlabDep(
-  imageName: string,
-  registryAliases?: Record<string, string>,
-): PackageDependency {
+export function getGitlabDep(imageName: string): PackageDependency {
   const match = depProxyRe.exec(imageName);
   if (match?.groups) {
     const dep = { ...getDep(match.groups.depName), replaceString: imageName };
@@ -22,5 +19,5 @@ export function getGitlabDep(
     dep.autoReplaceStringTemplate = `${match.groups.prefix}${dep.autoReplaceStringTemplate}`;
     return dep;
   }
-  return getDep(imageName, true, registryAliases);
+  return getDep(imageName, true);
 }

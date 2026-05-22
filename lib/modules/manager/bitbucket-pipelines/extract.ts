@@ -40,7 +40,6 @@ export function extractPackageFile(
           lineIdx,
           len,
           dockerImageObjectGroups.spaces,
-          config.registryAliases,
         );
         continue;
       }
@@ -51,7 +50,7 @@ export function extractPackageFile(
 
         if (pipe.startsWith('docker://')) {
           const currentPipe = pipe.replace('docker://', '');
-          addDepAsDockerImage(deps, currentPipe, config.registryAliases);
+          addDepAsDockerImage(deps, currentPipe);
         } else {
           addDepAsBitbucketTag(deps, pipe);
         }
@@ -61,7 +60,7 @@ export function extractPackageFile(
       const dockerImageMatch = dockerImageRegex.exec(line);
       if (dockerImageMatch) {
         const currentFrom = dockerImageMatch[1];
-        addDepAsDockerImage(deps, currentFrom, config.registryAliases);
+        addDepAsDockerImage(deps, currentFrom);
       }
     }
   } catch (err) /* istanbul ignore next */ {

@@ -83,11 +83,7 @@ export class HelmReleaseExtractor extends DependencyExtractor {
     config: ExtractConfig,
     dep: PackageDependency,
   ): void {
-    const { packageName, datasource } = getDep(
-      depName,
-      false,
-      config.registryAliases,
-    );
+    const { packageName, datasource } = getDep(depName, false);
     dep.packageName = packageName;
     dep.datasource = datasource;
   }

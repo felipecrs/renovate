@@ -49,7 +49,7 @@ export abstract class TerraformProviderExtractor extends DependencyExtractor {
     if (isNonEmptyString(dep.managerData?.source)) {
       // TODO #22198
       if (isOCIRegistry(dep.managerData.source)) {
-        applyOciDependency(dep, dep.managerData.source, config.registryAliases);
+        applyOciDependency(dep, dep.managerData.source);
         return dep;
       }
 

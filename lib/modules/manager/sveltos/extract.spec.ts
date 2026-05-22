@@ -463,7 +463,7 @@ describe('modules/manager/sveltos/extract', () => {
           {
             currentValue: '0.7.2',
             depName: 'oci://registry-1.docker.io/bitnamicharts/vault',
-            packageName: 'docker.proxy.test/some/path/bitnamicharts/vault',
+            packageName: 'registry-1.docker.io/bitnamicharts/vault',
             datasource: 'docker',
             depType: 'ClusterProfile',
           },

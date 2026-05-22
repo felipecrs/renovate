@@ -19,7 +19,7 @@ export function extractPackageFile(
     const match = re.exec(line);
     if (match) {
       const currentFrom = match[1];
-      const dep = getDep(currentFrom, true, config.registryAliases);
+      const dep = getDep(currentFrom, true);
       logger.debug(
         {
           depName: dep.depName,

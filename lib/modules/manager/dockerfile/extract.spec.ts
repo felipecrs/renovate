@@ -1,6 +1,5 @@
 import { codeBlock } from 'common-tags';
 import { Fixtures } from '~test/fixtures.ts';
-import type { PackageDependency } from '../types.ts';
 import { extractVariables, getDep } from './extract.ts';
 import { extractPackageFile } from './index.ts';
 
@@ -1364,12 +1363,12 @@ describe('modules/manager/dockerfile/extract', () => {
       deps: [
         {
           autoReplaceStringTemplate:
-            'quay.io/myName/myPackage:{{#if newValue}}{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}',
+            '{{depName}}{{#if newValue}}:{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}',
           currentDigest: undefined,
           currentValue: '0.6.2',
           datasource: 'docker',
           depName: 'quay.io/myName/myPackage',
-          packageName: 'my-quay-mirror.registry.com/myName/myPackage',
+          packageName: 'quay.io/myName/myPackage',
           depType: 'final',
           replaceString: 'quay.io/myName/myPackage:0.6.2',
         },
@@ -1614,37 +1613,6 @@ describe('modules/manager/dockerfile/extract', () => {
         skipReason: 'contains-variable',
       });
     });
-
-    const versionAndDigestTemplate =
-      ':{{#if newValue}}{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}';
-    const defaultAutoReplaceStringTemplate =
-      '{{depName}}{{#if newValue}}:{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}';
-
-    it.each`
-      name                         | registryAliases                                         | imageName                     | dep
-      ${'simple aliases'}          | ${{ 'foo.com/some': 'foo.registry.com' }}               | ${'foo.com/some/image:1.0'}   | ${{ depName: 'foo.com/some/image', packageName: 'foo.registry.com/image', currentValue: '1.0', autoReplaceStringTemplate: `foo.com/some/image${versionAndDigestTemplate}` }}
-      ${'multiple aliases'}        | ${{ foo: 'foo.registry.com', bar: 'bar.registry.com' }} | ${'foo/image:1.0'}            | ${{ depName: 'foo/image', packageName: 'foo.registry.com/image', currentValue: '1.0', autoReplaceStringTemplate: `foo/image${versionAndDigestTemplate}` }}
-      ${'aliased variable'}        | ${{ $CI_REGISTRY: 'registry.com' }}                     | ${'$CI_REGISTRY/image:1.0'}   | ${{ depName: '$CI_REGISTRY/image', packageName: 'registry.com/image', currentValue: '1.0', autoReplaceStringTemplate: `$CI_REGISTRY/image${versionAndDigestTemplate}` }}
-      ${'variables with brackets'} | ${{ '${CI_REGISTRY}': 'registry.com' }}                 | ${'${CI_REGISTRY}/image:1.0'} | ${{ depName: '${CI_REGISTRY}/image', packageName: 'registry.com/image', currentValue: '1.0', autoReplaceStringTemplate: `$\{CI_REGISTRY}/image${versionAndDigestTemplate}` }}
-      ${'not aliased variable'}    | ${{}}                                                   | ${'$CI_REGISTRY/image:1.0'}   | ${{ autoReplaceStringTemplate: defaultAutoReplaceStringTemplate }}
-      ${'plain image'}             | ${{}}                                                   | ${'registry.com/image:1.0'}   | ${{ depName: 'registry.com/image', currentValue: '1.0', autoReplaceStringTemplate: defaultAutoReplaceStringTemplate }}
-    `(
-      'supports registry aliases - $name',
-      ({
-        registryAliases,
-        imageName,
-        dep,
-      }: {
-        registryAliases: Record<string, string>;
-        imageName: string;
-        dep: PackageDependency;
-      }) => {
-        expect(getDep(imageName, true, registryAliases)).toMatchObject({
-          ...dep,
-          replaceString: imageName,
-        });
-      },
-    );
   });
 
   describe('extractVariables()', () => {

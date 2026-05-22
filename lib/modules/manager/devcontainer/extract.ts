@@ -22,7 +22,7 @@ export function extractPackageFile(
     const deps: PackageDependency[] = [];
 
     const image = file?.image ?? null;
-    const imageDep = getDep(image, packageFile, extractConfig.registryAliases);
+    const imageDep = getDep(image, packageFile);
 
     if (imageDep) {
       imageDep.depType = 'image';
@@ -38,11 +38,7 @@ export function extractPackageFile(
 
     if (features) {
       for (const [feature, value] of Object.entries(features)) {
-        const featureDep = getDep(
-          feature,
-          packageFile,
-          extractConfig.registryAliases,
-        );
+        const featureDep = getDep(feature, packageFile);
         if (featureDep) {
           featureDep.depType = 'feature';
           featureDep.pinDigests = false;
@@ -116,12 +112,11 @@ export function extractPackageFile(
 function getDep(
   subject: string | null,
   packageFile: string,
-  registryAliases?: Record<string, string>,
 ): PackageDependency | null {
   if (!subject) {
     return null;
   }
-  const dep = getDockerDep(subject, true, registryAliases);
+  const dep = getDockerDep(subject, true);
   if (!isValidDependency(dep)) {
     logger.trace(
       { subject, packageFile },

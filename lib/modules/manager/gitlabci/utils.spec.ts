@@ -3,8 +3,6 @@ import { getGitlabDep } from './utils.ts';
 
 describe('modules/manager/gitlabci/utils', () => {
   describe('getGitlabDep', () => {
-    const versionAndDigestTemplate =
-      ':{{#if newValue}}{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}';
     const defaultAutoReplaceStringTemplate =
       '{{depName}}{{#if newValue}}:{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}';
 
@@ -46,24 +44,13 @@ describe('modules/manager/gitlabci/utils', () => {
     );
 
     it.each`
-      name                         | registryAliases                                         | imageName                     | dep
-      ${'multiple aliases'}        | ${{ foo: 'foo.registry.com', bar: 'bar.registry.com' }} | ${'foo/image:1.0'}            | ${{ depName: 'foo/image', packageName: 'foo.registry.com/image', currentValue: '1.0', autoReplaceStringTemplate: `foo/image${versionAndDigestTemplate}` }}
-      ${'aliased variable'}        | ${{ $CI_REGISTRY: 'registry.com' }}                     | ${'$CI_REGISTRY/image:1.0'}   | ${{ depName: '$CI_REGISTRY/image', packageName: 'registry.com/image', currentValue: '1.0', autoReplaceStringTemplate: `$CI_REGISTRY/image${versionAndDigestTemplate}` }}
-      ${'variables with brackets'} | ${{ '${CI_REGISTRY}': 'registry.com' }}                 | ${'${CI_REGISTRY}/image:1.0'} | ${{ depName: '${CI_REGISTRY}/image', packageName: 'registry.com/image', currentValue: '1.0', autoReplaceStringTemplate: `$\{CI_REGISTRY}/image${versionAndDigestTemplate}` }}
-      ${'not aliased variable'}    | ${{}}                                                   | ${'$CI_REGISTRY/image:1.0'}   | ${{ autoReplaceStringTemplate: defaultAutoReplaceStringTemplate }}
-      ${'plain image'}             | ${{}}                                                   | ${'registry.com/image:1.0'}   | ${{ depName: 'registry.com/image', currentValue: '1.0', autoReplaceStringTemplate: defaultAutoReplaceStringTemplate }}
+      name                      | imageName                   | dep
+      ${'not aliased variable'} | ${'$CI_REGISTRY/image:1.0'} | ${{ autoReplaceStringTemplate: defaultAutoReplaceStringTemplate }}
+      ${'plain image'}          | ${'registry.com/image:1.0'} | ${{ depName: 'registry.com/image', currentValue: '1.0', autoReplaceStringTemplate: defaultAutoReplaceStringTemplate }}
     `(
       'supports registry aliases - $name',
-      ({
-        registryAliases,
-        imageName,
-        dep,
-      }: {
-        registryAliases: Record<string, string>;
-        imageName: string;
-        dep: PackageDependency;
-      }) => {
-        expect(getGitlabDep(imageName, registryAliases)).toMatchObject({
+      ({ imageName, dep }: { imageName: string; dep: PackageDependency }) => {
+        expect(getGitlabDep(imageName)).toMatchObject({
           ...dep,
           replaceString: imageName,
         });

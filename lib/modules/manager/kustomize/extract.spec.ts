@@ -249,7 +249,7 @@ describe('modules/manager/kustomize/extract', () => {
     it('should correctly extract an OCI chart with registryAliases', () => {
       const sample = {
         depName: 'redis',
-        packageName: 'registry-1.docker.io/bitnamicharts/redis',
+        packageName: 'localhost:5000/bitnamicharts/redis',
         currentValue: '18.12.1',
         datasource: DockerDatasource.id,
         pinDigests: false,
@@ -383,7 +383,7 @@ describe('modules/manager/kustomize/extract', () => {
         replaceString: 'v1.0.0',
         datasource: DockerDatasource.id,
         depName: 'localhost:5000/repo/image/service',
-        packageName: 'docker.io/image/service',
+        packageName: 'localhost:5000/repo/image/service',
       };
       const pkg = extractImage(
         {

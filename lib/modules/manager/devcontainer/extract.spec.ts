@@ -400,7 +400,7 @@ describe('modules/manager/devcontainer/extract', () => {
             currentValue: '1',
             datasource: 'docker',
             depName: 'ghcr.io/devcontainers/features/go',
-            packageName: 'some-registry.io/mirror/features/go',
+            packageName: 'ghcr.io/devcontainers/features/go',
             depType: 'feature',
           },
           {
@@ -412,7 +412,7 @@ describe('modules/manager/devcontainer/extract', () => {
             currentValue: '1',
             datasource: 'docker',
             depName: 'ghcr.io/devcontainers/features/node',
-            packageName: 'some-registry.io/mirror/features/node',
+            packageName: 'ghcr.io/devcontainers/features/node',
             depType: 'feature',
           },
           {
@@ -424,7 +424,7 @@ describe('modules/manager/devcontainer/extract', () => {
             currentValue: '1',
             datasource: 'docker',
             depName: 'ghcr.io/devcontainers/features/python',
-            packageName: 'some-registry.io/mirror/features/python',
+            packageName: 'ghcr.io/devcontainers/features/python',
             depType: 'feature',
           },
           {
@@ -436,7 +436,7 @@ describe('modules/manager/devcontainer/extract', () => {
             currentValue: '1',
             datasource: 'docker',
             depName: 'ghcr.io/devcontainers/features/ruby',
-            packageName: 'some-registry.io/mirror/features/ruby',
+            packageName: 'ghcr.io/devcontainers/features/ruby',
             depType: 'feature',
           },
           {

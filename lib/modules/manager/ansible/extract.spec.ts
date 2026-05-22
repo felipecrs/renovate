@@ -37,12 +37,12 @@ describe('modules/manager/ansible/extract', () => {
         deps: [
           {
             autoReplaceStringTemplate:
-              'quay.io/redis:{{#if newValue}}{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}',
+              '{{depName}}{{#if newValue}}:{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}',
             currentDigest: undefined,
             currentValue: '0.0.1',
             datasource: 'docker',
             depName: 'quay.io/redis',
-            packageName: 'my-quay-mirror.registry.com/redis',
+            packageName: 'quay.io/redis',
             replaceString: 'quay.io/redis:0.0.1',
           },
         ],
@@ -98,12 +98,12 @@ describe('modules/manager/ansible/extract', () => {
         deps: [
           {
             autoReplaceStringTemplate:
-              'quay.io/redis:{{#if newValue}}{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}',
+              '{{depName}}{{#if newValue}}:{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}',
             currentDigest: undefined,
             currentValue: '0.0.1',
             datasource: 'docker',
             depName: 'quay.io/redis',
-            packageName: 'my-quay-mirror.registry.com/redis',
+            packageName: 'quay.io/redis',
             replaceString: 'quay.io/redis:0.0.1',
           },
         ],

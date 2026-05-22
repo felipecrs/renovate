@@ -350,7 +350,7 @@ describe('modules/manager/terraform/extract', () => {
           datasource: 'docker',
           depName: 'aliased_oci',
           depType: 'module',
-          packageName: 'index.docker.io/terraform-modules/vpc',
+          packageName: 'hub.proxy.test/terraform-modules/vpc',
         },
       ]);
     });
@@ -606,11 +606,11 @@ describe('modules/manager/terraform/extract', () => {
         },
         {
           autoReplaceStringTemplate:
-            'hub.proxy.test/bitnami/nginx:{{#if newValue}}{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}',
+            '{{depName}}{{#if newValue}}:{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}',
           currentValue: '1.24.0',
           datasource: 'docker',
           depName: 'hub.proxy.test/bitnami/nginx',
-          packageName: 'index.docker.io/bitnami/nginx',
+          packageName: 'hub.proxy.test/bitnami/nginx',
           depType: 'docker_image',
           replaceString: 'hub.proxy.test/bitnami/nginx:1.24.0',
         },
@@ -824,7 +824,7 @@ describe('modules/manager/terraform/extract', () => {
           datasource: 'docker',
           depName: 'kube-prometheus',
           depType: 'helm_release',
-          packageName: 'index.docker.io/bitnamicharts/kube-prometheus',
+          packageName: 'hub.proxy.test/bitnamicharts/kube-prometheus',
         },
         {
           currentValue: '1.0.1',

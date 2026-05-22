@@ -59,7 +59,7 @@ function extractImages(
     const match = k8sImageRegex.exec(line);
     if (match) {
       const currentFrom = match[1];
-      const dep = getDep(currentFrom, true, config.registryAliases);
+      const dep = getDep(currentFrom, true);
       logger.debug(
         {
           depName: dep.depName,
@@ -83,7 +83,7 @@ function extractImageVolumes(
 
   for (const manifest of manifests) {
     for (const currentFrom of manifest.imageVolumeReferences) {
-      const dep = getDep(currentFrom, true, config.registryAliases);
+      const dep = getDep(currentFrom, true);
       logger.debug(
         {
           depName: dep.depName,

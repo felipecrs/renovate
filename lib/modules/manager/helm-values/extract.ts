@@ -17,9 +17,8 @@ function getHelmDep(
   registry: string,
   repository: string,
   tag: string,
-  registryAliases: Record<string, string> | undefined,
 ): PackageDependency {
-  const dep = getDep(`${registry}${repository}:${tag}`, false, registryAliases);
+  const dep = getDep(`${registry}${repository}:${tag}`, false);
   dep.replaceString = tag;
   dep.versioning = dockerVersioning;
   dep.autoReplaceStringTemplate =
@@ -34,14 +33,12 @@ function getHelmDep(
  */
 export function findDependencies(
   parsedContent: Record<string, unknown> | HelmDockerImageDependency,
-  registryAliases: Record<string, string> | undefined,
 ): PackageDependency[] {
-  return findDependenciesInternal(parsedContent, [], registryAliases);
+  return findDependenciesInternal(parsedContent, []);
 }
 export function findDependenciesInternal(
   parsedContent: Record<string, unknown> | HelmDockerImageDependency,
   packageDependencies: PackageDependency[],
-  registryAliases: Record<string, string> | undefined,
 ): PackageDependency[] {
   if (!parsedContent || typeof parsedContent !== 'object') {
     return packageDependencies;
@@ -55,16 +52,13 @@ export function findDependenciesInternal(
       registry = registry ? `${registry}/` : '';
       const repository = String(currentItem.repository);
       const tag = `${currentItem.tag ?? currentItem.version}`;
-      packageDependencies.push(
-        getHelmDep(registry, repository, tag, registryAliases),
-      );
+      packageDependencies.push(getHelmDep(registry, repository, tag));
     } else if (matchesHelmValuesInlineImage(key, value)) {
-      packageDependencies.push(getDep(value, true, registryAliases));
+      packageDependencies.push(getDep(value, true));
     } else {
       findDependenciesInternal(
         value as Record<string, unknown>,
         packageDependencies,
-        registryAliases,
       );
     }
   });
@@ -90,7 +84,7 @@ export function extractPackageFile(
     const deps: PackageDependency<Record<string, any>>[] = [];
 
     for (const con of parsedContent) {
-      deps.push(...findDependencies(con, config.registryAliases));
+      deps.push(...findDependencies(con));
     }
 
     if (deps.length) {

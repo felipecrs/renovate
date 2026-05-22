@@ -269,6 +269,7 @@ export async function getAuthHeaders(
 export function getRegistryRepository(
   packageName: string,
   registryUrl: string,
+  registryAliases?: Record<string, string>,
 ): RegistryRepository {
   if (registryUrl !== DOCKER_HUB) {
     const registryEndingWithSlash = ensureTrailingSlash(
@@ -293,8 +294,26 @@ export function getRegistryRepository(
       };
     }
   }
+  // Apply registry alias if any key matches the start of the packageName.
+  // Sorted longest-first so more-specific path-based keys win over shorter ones
+  // (e.g. 'foo.com/some' beats 'foo.com').  Handles FQDN, path-based,
+  // non-FQDN, and CI-variable alias keys alike.
+  let resolvedPackageName = packageName;
+  if (registryAliases) {
+    const sortedKeys = Object.keys(registryAliases).sort(
+      (a, b) => b.length - a.length,
+    );
+    for (const aliasKey of sortedKeys) {
+      if (resolvedPackageName.startsWith(`${aliasKey}/`)) {
+        const rest = resolvedPackageName.slice(aliasKey.length + 1);
+        resolvedPackageName = `${registryAliases[aliasKey]}/${rest}`;
+        break;
+      }
+    }
+  }
+
   let registryHost = registryUrl;
-  const split = packageName.split('/');
+  const split = resolvedPackageName.split('/');
   if (split.length > 1 && (split[0].includes('.') || split[0].includes(':'))) {
     [registryHost] = split;
     split.shift();

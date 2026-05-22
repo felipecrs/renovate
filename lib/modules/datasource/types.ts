@@ -20,6 +20,7 @@ export interface GetDigestInputConfig {
   currentValue?: string;
   currentDigest?: string;
   replacementName?: string;
+  registryAliases?: Record<string, string>;
 }
 
 export interface DigestConfig {
@@ -28,6 +29,7 @@ export interface DigestConfig {
   registryUrl?: string;
   currentValue?: string;
   currentDigest?: string;
+  registryAliases?: Record<string, string>;
 }
 
 export interface GetReleasesConfig {
@@ -42,6 +44,7 @@ export interface GetReleasesConfig {
    */
   constraintsVersioning?: Partial<Record<AdditionalConstraintName, string>>;
   constraintsFiltering?: ConstraintsFilter;
+  registryAliases?: Record<string, string>;
 }
 
 export interface GetPkgReleasesConfig {

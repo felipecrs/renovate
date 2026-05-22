@@ -99,11 +99,25 @@ function getCNBDependencies(
   for (const node of nodes) {
     const depString = node.val.trim();
     if (isDockerRef(depString)) {
-      const dep = getDockerDep(
-        depString.replace(DOCKER_PREFIX, ''),
-        true,
-        config.registryAliases,
-      );
+      const dep = getDockerDep(depString.replace(DOCKER_PREFIX, ''), true);
+
+      if (!dep.skipReason && dep.packageName) {
+        const split = dep.packageName.split('/');
+        if (
+          split.length > 1 &&
+          (split[0].includes('.') || split[0].includes(':'))
+        ) {
+          const registry = split.shift()!;
+          const resolvedRegistry =
+            config.registryAliases?.[registry] ?? registry;
+          dep.registryUrls = [
+            resolvedRegistry.includes('://')
+              ? resolvedRegistry
+              : `https://${resolvedRegistry}`,
+          ];
+          dep.packageName = split.join('/');
+        }
+      }
 
       dep.fileReplacePosition = node.position!; // TODO: should not be null
       if (dep.currentValue || dep.currentDigest) {

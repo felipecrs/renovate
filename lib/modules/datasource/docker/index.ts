@@ -873,7 +873,13 @@ export class DockerDatasource extends Datasource {
    *  - Return the digest as a string
    */
   private async _getDigest(
-    { registryUrl, lookupName, packageName, currentDigest }: DigestConfig,
+    {
+      registryUrl,
+      lookupName,
+      packageName,
+      currentDigest,
+      registryAliases,
+    }: DigestConfig,
     newValue?: string,
   ): Promise<string | null> {
     let registryHost: string;
@@ -887,6 +893,7 @@ export class DockerDatasource extends Datasource {
       ({ registryHost, dockerRepository } = getRegistryRepository(
         packageName,
         registryUrl!,
+        registryAliases,
       ));
     }
     logger.debug(
@@ -1055,6 +1062,7 @@ export class DockerDatasource extends Datasource {
     const { registryHost, dockerRepository } = getRegistryRepository(
       config.packageName,
       config.registryUrl!,
+      config.registryAliases,
     );
     const digest = config.currentDigest ? `@${config.currentDigest}` : '';
     return withCache(
@@ -1140,10 +1148,12 @@ export class DockerDatasource extends Datasource {
   private async _getReleases({
     packageName,
     registryUrl,
+    registryAliases,
   }: GetReleasesConfig): Promise<ReleaseResult | null> {
     const { registryHost, dockerRepository } = getRegistryRepository(
       packageName,
       registryUrl!,
+      registryAliases,
     );
 
     type TagsResultType = AsyncResult<
@@ -1220,6 +1230,7 @@ export class DockerDatasource extends Datasource {
     const { registryHost, dockerRepository } = getRegistryRepository(
       config.packageName,
       config.registryUrl!,
+      config.registryAliases,
     );
     return withCache(
       {

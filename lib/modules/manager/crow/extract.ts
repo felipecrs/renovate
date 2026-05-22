@@ -45,7 +45,7 @@ export function extractPackageFile(
       : Object.values(coerceObject(pipelineValue));
     return steps
       .filter((step) => isString(step?.image))
-      .map((step) => getDep(step.image, true, extractConfig.registryAliases));
+      .map((step) => getDep(step.image, true));
   });
 
   logger.trace({ deps }, 'Crow Configuration image');

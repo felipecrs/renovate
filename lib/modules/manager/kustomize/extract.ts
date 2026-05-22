@@ -90,7 +90,7 @@ export function extractImage(
     logger.debug({ image }, 'Invalid image name');
     return null;
   }
-  const nameDep = getDep(nameToSplit, false, aliases);
+  const nameDep = getDep(nameToSplit, false);
   const { depName } = nameDep;
   const { digest, newTag } = image;
   if (digest && newTag) {
@@ -131,7 +131,7 @@ export function extractImage(
       };
     }
 
-    const dep = getDep(`${depName}:${newTag}`, false, aliases);
+    const dep = getDep(`${depName}:${newTag}`, false);
     return {
       ...dep,
       replaceString: newTag,
@@ -162,7 +162,6 @@ export function extractHelmChart(
     const dep = getDep(
       `${removeOCIPrefix(helmChart.repo)}/${helmChart.name}:${helmChart.version}`,
       false,
-      aliases,
     );
     delete dep.replaceString;
     return {

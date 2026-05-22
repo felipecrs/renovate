@@ -886,7 +886,7 @@ describe('modules/manager/flux/extract', () => {
             currentValue: 'v1.8.2',
             currentDigest: undefined,
             depName: 'ghcr.io/kyverno/manifests/kyverno',
-            packageName: 'ghcr.proxy.test/some/path/kyverno/manifests/kyverno',
+            packageName: 'ghcr.io/kyverno/manifests/kyverno',
             datasource: DockerDatasource.id,
             replaceString: 'v1.8.2',
           },
@@ -1502,7 +1502,7 @@ describe('modules/manager/flux/extract', () => {
               datasource: DockerDatasource.id,
               depName: 'actions-runner-controller-charts/gha-runner-scale-set',
               packageName:
-                'ghcr.proxy.test/some/path/actions/actions-runner-controller-charts/gha-runner-scale-set',
+                'ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set',
             },
           ],
           packageFile:

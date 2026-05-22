@@ -63,7 +63,6 @@ function extractFleetHelmBlock(
     const dockerDep = getDep(
       `${removeOCIPrefix(doc.chart)}:${doc.version}`,
       false,
-      config.registryAliases,
     );
 
     return {

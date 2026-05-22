@@ -54,7 +54,6 @@ export function getLockedVersion(
 export function applyOciDependency(
   dep: PackageDependency,
   source: string,
-  registryAliases?: Record<string, string>,
 ): void {
   const url = parseUrl(source);
   if (!url) {
@@ -65,7 +64,7 @@ export function applyOciDependency(
   // Strip optional `//subfolder` sub-path (e.g. `example.com/repo//modules/vpc`)
   const imageRef = (url.host + url.pathname).replace(regEx(/\/\/.+$/), '');
 
-  const parsed = getDep(imageRef, false, registryAliases);
+  const parsed = getDep(imageRef, false);
   dep.packageName = parsed.packageName;
   dep.datasource = parsed.datasource;
   dep.currentValue = url.searchParams.get('tag') ?? undefined;

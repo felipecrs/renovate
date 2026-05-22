@@ -127,7 +127,6 @@ function resolveHelmRepository(
           dep.packageName = getDep(
             `${removeOCIPrefix(repo.spec.url)}/${dep.depName}`,
             false,
-            registryAliases,
           ).packageName;
           return null;
         } else {
@@ -152,7 +151,6 @@ function resolveHelmRepository(
         dep.packageName = getDep(
           `${removeOCIPrefix(aliasUrl)}/${dep.depName}`,
           false,
-          registryAliases,
         ).packageName;
       } else {
         dep.registryUrls = [aliasUrl];
@@ -410,7 +408,7 @@ function resolveResourceManifest(
           dep.replaceString = resource.spec.ref.tag;
           deps.push(dep);
         } else {
-          const dep = getDep(container, false, registryAliases);
+          const dep = getDep(container, false);
           dep.skipReason = 'unversioned-reference';
           deps.push(dep);
         }

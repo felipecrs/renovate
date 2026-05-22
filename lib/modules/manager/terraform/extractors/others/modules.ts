@@ -76,7 +76,7 @@ export class ModuleExtractor extends DependencyExtractor {
     const source = dep.managerData!.source as string;
 
     if (isOCIRegistry(source)) {
-      applyOciDependency(dep, source, config.registryAliases);
+      applyOciDependency(dep, source);
       return dep;
     }
 

@@ -87,13 +87,13 @@ export function extractPackageFile(
         const { image, services } = job;
 
         if (image) {
-          const dep = getGitlabDep(image.value, config.registryAliases);
+          const dep = getGitlabDep(image.value);
           dep.depType = image.type;
           deps.push(dep);
         }
 
         for (const service of services) {
-          const dep = getGitlabDep(service, config.registryAliases);
+          const dep = getGitlabDep(service);
           dep.depType = 'service-image';
           deps.push(dep);
         }

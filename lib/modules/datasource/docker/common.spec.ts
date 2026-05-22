@@ -122,6 +122,90 @@ describe('modules/datasource/docker/common', () => {
         dockerRepository: 'image',
       });
     });
+
+    it('applies registryAliases when registry is embedded in packageName', () => {
+      const res = getRegistryRepository(
+        'ghcr.io/some/image',
+        'https://index.docker.io',
+        { 'ghcr.io': 'internal.mirror.example.com' },
+      );
+      expect(res).toStrictEqual({
+        dockerRepository: 'some/image',
+        registryHost: 'https://internal.mirror.example.com',
+      });
+    });
+
+    it('applies registryAliases for non-FQDN alias keys', () => {
+      const res = getRegistryRepository(
+        'foo/image',
+        'https://index.docker.io',
+        { foo: 'foo.registry.com' },
+      );
+      expect(res).toStrictEqual({
+        dockerRepository: 'image',
+        registryHost: 'https://foo.registry.com',
+      });
+    });
+
+    it('applies registryAliases for CI variable alias keys', () => {
+      const res = getRegistryRepository(
+        '$CI_REGISTRY/image',
+        'https://index.docker.io',
+        { $CI_REGISTRY: 'registry.com' },
+      );
+      expect(res).toStrictEqual({
+        dockerRepository: 'image',
+        registryHost: 'https://registry.com',
+      });
+    });
+
+    it('applies registryAliases for path-based alias keys', () => {
+      const res = getRegistryRepository(
+        'foo.com/some/image',
+        'https://index.docker.io',
+        { 'foo.com/some': 'foo.registry.com' },
+      );
+      expect(res).toStrictEqual({
+        dockerRepository: 'image',
+        registryHost: 'https://foo.registry.com',
+      });
+    });
+
+    it('prefers longer alias key over shorter one', () => {
+      const res = getRegistryRepository(
+        'foo.com/some/image',
+        'https://index.docker.io',
+        { 'foo.com': 'short.example.com', 'foo.com/some': 'long.example.com' },
+      );
+      expect(res).toStrictEqual({
+        dockerRepository: 'image',
+        registryHost: 'https://long.example.com',
+      });
+    });
+
+    it('does not apply registryAliases when registry comes from explicit registryUrl', () => {
+      const res = getRegistryRepository(
+        'my.local.registry/prefix/image',
+        'https://my.local.registry/prefix',
+        { 'my.local.registry': 'other.registry.example.com' },
+      );
+      expect(res).toStrictEqual({
+        dockerRepository: 'prefix/image',
+        registryHost: 'https://my.local.registry',
+      });
+    });
+
+    it('does not modify registryHost when no registryAlias matches', () => {
+      const res = getRegistryRepository(
+        'ghcr.io/some/image',
+        'https://index.docker.io',
+        { 'quay.io': 'internal.mirror.example.com' },
+      );
+      expect(res).toStrictEqual({
+        dockerRepository: 'some/image',
+        registryHost: 'https://ghcr.io',
+      });
+    });
   });
 
   describe('getAuthHeaders', () => {

@@ -144,12 +144,12 @@ describe('modules/manager/woodpecker/extract', () => {
         deps: [
           {
             autoReplaceStringTemplate:
-              'quay.io/nginx:{{#if newValue}}{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}',
+              '{{depName}}{{#if newValue}}:{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}',
             currentDigest: undefined,
             currentValue: '0.0.1',
             datasource: 'docker',
             depName: 'quay.io/nginx',
-            packageName: 'my-quay-mirror.registry.com/nginx',
+            packageName: 'quay.io/nginx',
             replaceString: 'quay.io/nginx:0.0.1',
           },
         ],
@@ -205,12 +205,12 @@ describe('modules/manager/woodpecker/extract', () => {
         deps: [
           {
             autoReplaceStringTemplate:
-              'quay.io/nginx:{{#if newValue}}{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}',
+              '{{depName}}{{#if newValue}}:{{newValue}}{{/if}}{{#if newDigest}}@{{newDigest}}{{/if}}',
             currentDigest: undefined,
             currentValue: '0.0.1',
             datasource: 'docker',
             depName: 'quay.io/nginx',
-            packageName: 'my-quay-mirror.registry.com/nginx',
+            packageName: 'quay.io/nginx',
             replaceString: 'quay.io/nginx:0.0.1',
           },
         ],

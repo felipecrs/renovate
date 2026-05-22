@@ -14,7 +14,6 @@ import { CircleCiFile, type CircleCiOrb } from './schema.ts';
 function extractDefinition(
   deps: PackageDependency[],
   definition: CircleCiOrb | CircleCiFile,
-  registryAliases: Record<string, string>,
 ): void {
   for (const [key, orb] of Object.entries(definition.orbs)) {
     if (typeof orb === 'string') {
@@ -29,7 +28,7 @@ function extractDefinition(
         datasource: OrbDatasource.id,
       });
     } else {
-      extractDefinition(deps, orb, registryAliases);
+      extractDefinition(deps, orb);
     }
   }
 
@@ -37,7 +36,7 @@ function extractDefinition(
   const environments = [...definition.executors, ...definition.jobs];
   for (const dockerImage of environments) {
     deps.push({
-      ...getDep(dockerImage, true, registryAliases),
+      ...getDep(dockerImage, true),
       depType: 'docker',
     });
   }
@@ -57,13 +56,12 @@ export function extractPackageFile(
     return null;
   }
 
-  const registryAliases = config?.registryAliases ?? {};
   const deps: PackageDependency[] = [];
-  extractDefinition(deps, parsed, registryAliases);
+  extractDefinition(deps, parsed);
 
   for (const alias of parsed.aliases) {
     deps.push({
-      ...getDep(alias, true, registryAliases),
+      ...getDep(alias, true),
       depType: 'docker',
     });
   }
