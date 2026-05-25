@@ -2,10 +2,12 @@
 import { GlobalConfig } from '../../../config/global.ts';
 import { logger } from '../../../logger/index.ts';
 import { detectPlatform } from '../../../util/common.ts';
+import { getEnv } from '../../../util/env.ts';
 import * as hostRules from '../../../util/host-rules.ts';
 import { Http } from '../../../util/http/index.ts';
 import { regEx } from '../../../util/regex.ts';
 import {
+  isHttpUrl,
   parseUrl,
   trimLeadingSlash,
   trimTrailingSlash,
@@ -16,6 +18,8 @@ import { GitTagsDatasource } from '../git-tags/index.ts';
 import { GiteaTagsDatasource } from '../gitea-tags/index.ts';
 import { GithubTagsDatasource } from '../github-tags/index.ts';
 import { GitlabTagsDatasource } from '../gitlab-tags/index.ts';
+import { fetchLatestGoModInfo } from './common.ts';
+import { parseGoproxy } from './goproxy-parser.ts';
 import type { DataSource } from './types.ts';
 
 // TODO: figure out class hierarchy (#10532)
@@ -119,7 +123,65 @@ export class BaseGoDatasource {
     }
     //#endregion
 
-    return await BaseGoDatasource.goGetDatasource(goModule);
+    return (
+      (await BaseGoDatasource.getDatasourceFromProxyOrigin(goModule)) ??
+      (await BaseGoDatasource.goGetDatasource(goModule))
+    );
+  }
+
+  /**
+   * Resolve a DataSource from the GOPROXY's `@latest` endpoint Origin field.
+   * This avoids needing direct HTTP access to vanity domains like k8s.io.
+   *
+   * This lives in BaseGoDatasource (rather than GoProxyDatasource) because it
+   * is a *source discovery* concern: mapping a module name to its underlying
+   * VCS host.  Both GoProxyDatasource and GoDirectDatasource call
+   * getDatasource() and benefit from this resolution.
+   */
+  private static async getDatasourceFromProxyOrigin(
+    goModule: string,
+  ): Promise<DataSource | null> {
+    const goproxy = getEnv().GOPROXY;
+    if (!goproxy || goproxy === 'direct' || goproxy === 'off') {
+      return null;
+    }
+
+    // We ignore the GOPROXY fallback strategy (`,` vs `|`) here because this
+    // is a best-effort resolution that falls back to goGetDatasource anyway.
+    const proxyList = parseGoproxy(goproxy);
+    for (const { url } of proxyList) {
+      if (url === 'direct' || url === 'off') {
+        continue;
+      }
+
+      // Network errors return null — try next proxy in that case.
+      const info = await fetchLatestGoModInfo(
+        BaseGoDatasource.http,
+        url,
+        goModule,
+      );
+      if (!info) {
+        continue;
+      }
+
+      const originUrl = info.Origin?.URL;
+      if (info.Origin?.VCS !== 'git' || !originUrl || !isHttpUrl(originUrl)) {
+        // Proxy responded but Origin isn't usable — fall back to go-get
+        // rather than trying other proxies.
+        break;
+      }
+
+      const cleanUrl = originUrl.replace(regEx(/\.git$/), '');
+      const datasource = BaseGoDatasource.detectDatasource(cleanUrl, goModule);
+      if (datasource) {
+        return datasource;
+      }
+
+      // Origin URL didn't match a known host — fall back to go-get.
+      break;
+    }
+
+    return null;
   }
 
   private static async goGetDatasource(

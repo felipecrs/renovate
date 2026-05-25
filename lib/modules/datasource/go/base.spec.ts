@@ -2,6 +2,7 @@ import { mockDeep } from 'vitest-mock-extended';
 import { Fixtures } from '~test/fixtures.ts';
 import * as httpMock from '~test/http-mock.ts';
 import { GlobalConfig } from '../../../config/global.ts';
+import * as memCache from '../../../util/cache/memory/index.ts';
 import * as _hostRules from '../../../util/host-rules.ts';
 import { GitTagsDatasource } from '../git-tags/index.ts';
 import { GithubTagsDatasource } from '../github-tags/index.ts';
@@ -539,6 +540,147 @@ describe('modules/datasource/go/base', () => {
           packageName: 'my-project/my-repo',
           registryUrl: 'https://example.com/gitlab/',
         });
+      });
+    });
+  });
+
+  describe('proxy Origin resolution', () => {
+    const proxyUrl = 'https://proxy.example.com';
+
+    beforeEach(() => {
+      memCache.init();
+      hostRules.find.mockReturnValue({});
+      hostRules.hosts.mockReturnValue([]);
+      process.env.GOPROXY = proxyUrl;
+    });
+
+    afterEach(() => {
+      delete process.env.GOPROXY;
+    });
+
+    it('resolves datasource from proxy Origin for vanity domain', async () => {
+      httpMock
+        .scope(proxyUrl)
+        .get('/k8s.io/api/@latest')
+        .reply(200, {
+          Version: 'v0.30.0',
+          Origin: { VCS: 'git', URL: 'https://github.com/kubernetes/api' },
+        });
+
+      const res = await BaseGoDatasource.getDatasource('k8s.io/api');
+
+      expect(res).toEqual({
+        datasource: GithubTagsDatasource.id,
+        packageName: 'kubernetes/api',
+        registryUrl: 'https://github.com',
+      });
+    });
+
+    it('falls back to go-get when proxy Origin field is absent', async () => {
+      httpMock
+        .scope(proxyUrl)
+        .get('/custom.example.com/lib/@latest')
+        .reply(200, { Version: 'v1.0.0' });
+      httpMock
+        .scope('https://custom.example.com')
+        .get('/lib?go-get=1')
+        .reply(
+          200,
+          '<meta name="go-source" content="custom.example.com/lib https://github.com/custom/lib">',
+        );
+
+      const res = await BaseGoDatasource.getDatasource(
+        'custom.example.com/lib',
+      );
+
+      expect(res).toEqual({
+        datasource: GithubTagsDatasource.id,
+        packageName: 'custom/lib',
+        registryUrl: 'https://github.com',
+      });
+    });
+
+    it('skips proxy Origin when GOPROXY is direct', async () => {
+      process.env.GOPROXY = 'direct';
+      httpMock
+        .scope('https://vanity.example.com')
+        .get('/pkg?go-get=1')
+        .reply(
+          200,
+          '<meta name="go-source" content="vanity.example.com/pkg https://github.com/org/pkg">',
+        );
+
+      const res = await BaseGoDatasource.getDatasource(
+        'vanity.example.com/pkg',
+      );
+
+      expect(res).toEqual({
+        datasource: GithubTagsDatasource.id,
+        packageName: 'org/pkg',
+        registryUrl: 'https://github.com',
+      });
+    });
+
+    it('skips direct and off entries in the proxy list', async () => {
+      process.env.GOPROXY = `off|direct|${proxyUrl}`;
+      httpMock
+        .scope(proxyUrl)
+        .get('/k8s.io/api/@latest')
+        .reply(200, {
+          Version: 'v0.30.0',
+          Origin: { VCS: 'git', URL: 'https://github.com/kubernetes/api' },
+        });
+
+      const res = await BaseGoDatasource.getDatasource('k8s.io/api');
+
+      expect(res).toEqual({
+        datasource: GithubTagsDatasource.id,
+        packageName: 'kubernetes/api',
+        registryUrl: 'https://github.com',
+      });
+    });
+
+    it('strips .git suffix from Origin URL', async () => {
+      httpMock
+        .scope(proxyUrl)
+        .get('/k8s.io/utils/@latest')
+        .reply(200, {
+          Version: 'v0.2.0',
+          Origin: {
+            VCS: 'git',
+            URL: 'https://github.com/kubernetes/utils.git',
+          },
+        });
+
+      const res = await BaseGoDatasource.getDatasource('k8s.io/utils');
+
+      expect(res).toEqual({
+        datasource: GithubTagsDatasource.id,
+        packageName: 'kubernetes/utils',
+        registryUrl: 'https://github.com',
+      });
+    });
+
+    it('resolves GitLab Origin URL', async () => {
+      httpMock
+        .scope(proxyUrl)
+        .get('/vanity.example.com/lib/@latest')
+        .reply(200, {
+          Version: 'v1.0.0',
+          Origin: {
+            VCS: 'git',
+            URL: 'https://gitlab.com/org/lib',
+          },
+        });
+
+      const res = await BaseGoDatasource.getDatasource(
+        'vanity.example.com/lib',
+      );
+
+      expect(res).toEqual({
+        datasource: GitlabTagsDatasource.id,
+        packageName: 'org/lib',
+        registryUrl: 'https://gitlab.com',
       });
     });
   });

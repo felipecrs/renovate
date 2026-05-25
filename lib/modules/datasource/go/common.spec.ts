@@ -1,6 +1,17 @@
-import { getSourceUrl } from './common.ts';
+import { encodeGoCase, getSourceUrl } from './common.ts';
 
 describe('modules/datasource/go/common', () => {
+  describe('encodeGoCase', () => {
+    it.each`
+      input    | expected
+      ${'foo'} | ${'foo'}
+      ${'Foo'} | ${'!foo'}
+      ${'FOO'} | ${'!f!o!o'}
+    `('encodeGoCase($input) => $expected', ({ input, expected }) => {
+      expect(encodeGoCase(input)).toBe(expected);
+    });
+  });
+
   describe('getSourceUrl', () => {
     it.each`
       expected                                   | datasource          | packageName

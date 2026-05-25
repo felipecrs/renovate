@@ -14,10 +14,10 @@ import goVersioning from '../../versioning/go-mod-directive/index.ts';
 import { Datasource } from '../datasource.ts';
 import type { GetReleasesConfig, Release, ReleaseResult } from '../types.ts';
 import { BaseGoDatasource } from './base.ts';
-import { getSourceUrl } from './common.ts';
+import { encodeGoCase, fetchLatestGoModInfo, getSourceUrl } from './common.ts';
 import { parseGoproxy, parseNoproxy } from './goproxy-parser.ts';
 import { GoDirectDatasource } from './releases-direct.ts';
-import type { VersionInfo } from './types.ts';
+import { VersionInfoSchema } from './schema.ts';
 
 /** TODO #42566 */
 const goVersionRegex = regEx(/^\s*go\s+(?<version>[^\s]+)\s*$/);
@@ -136,22 +136,8 @@ export class GoProxyDatasource extends Datasource {
     );
   }
 
-  /**
-   * Avoid ambiguity when serving from case-insensitive file systems.
-   *
-   * @see https://golang.org/ref/mod#goproxy-protocol
-   */
-  encodeCase(input: string): string {
-    return input.replace(regEx(/([A-Z])/g), (x) => `!${x.toLowerCase()}`);
-  }
-
   async listVersions(baseUrl: string, packageName: string): Promise<Release[]> {
-    const url = joinUrlParts(
-      baseUrl,
-      this.encodeCase(packageName),
-      '@v',
-      'list',
-    );
+    const url = joinUrlParts(baseUrl, encodeGoCase(packageName), '@v', 'list');
     const { body } = await this.http.getText(url);
     return filterMap(body.split(newlineRegex), (str) => {
       if (!isNonEmptyStringAndNotWhitespace(str)) {
@@ -177,11 +163,11 @@ export class GoProxyDatasource extends Datasource {
   ): Promise<Release> {
     const url = joinUrlParts(
       baseUrl,
-      this.encodeCase(packageName),
+      encodeGoCase(packageName),
       '@v',
       `${version}.info`,
     );
-    const res = await this.http.getJsonUnchecked<VersionInfo>(url);
+    const res = await this.http.getJson(url, VersionInfoSchema);
 
     const result: Release = {
       version: res.body.Version,
@@ -223,7 +209,7 @@ export class GoProxyDatasource extends Datasource {
   ): Promise<string | undefined> {
     const url = joinUrlParts(
       baseUrl,
-      this.encodeCase(packageName),
+      encodeGoCase(packageName),
       '@v',
       `${version}.mod`,
     );
@@ -258,18 +244,8 @@ export class GoProxyDatasource extends Datasource {
     baseUrl: string,
     packageName: string,
   ): Promise<string | null> {
-    try {
-      const url = joinUrlParts(
-        baseUrl,
-        this.encodeCase(packageName),
-        '@latest',
-      );
-      const res = await this.http.getJsonUnchecked<VersionInfo>(url);
-      return res.body.Version;
-    } catch (err) {
-      logger.trace({ err }, 'Failed to get latest version');
-      return null;
-    }
+    const info = await fetchLatestGoModInfo(this.http, baseUrl, packageName);
+    return info?.Version ?? null;
   }
 
   async getVersionsWithInfo(

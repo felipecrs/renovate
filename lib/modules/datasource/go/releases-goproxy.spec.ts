@@ -2,6 +2,7 @@ import { codeBlock } from 'common-tags';
 import { mockDeep } from 'vitest-mock-extended';
 import { Fixtures } from '~test/fixtures.ts';
 import * as httpMock from '~test/http-mock.ts';
+import * as memCache from '../../../util/cache/memory/index.ts';
 import * as _hostRules from '../../../util/host-rules.ts';
 import { GithubReleasesDatasource } from '../github-releases/index.ts';
 import { GithubTagsDatasource } from '../github-tags/index.ts';
@@ -21,13 +22,8 @@ describe('modules/datasource/go/releases-goproxy', () => {
   const githubGetTags = vi.spyOn(GithubTagsDatasource.prototype, 'getReleases');
 
   beforeEach(() => {
+    memCache.init();
     hostRules.find.mockReturnValue({});
-  });
-
-  it('encodeCase', () => {
-    expect(datasource.encodeCase('foo')).toBe('foo');
-    expect(datasource.encodeCase('Foo')).toBe('!foo');
-    expect(datasource.encodeCase('FOO')).toBe('!f!o!o');
   });
 
   describe('requests', () => {
